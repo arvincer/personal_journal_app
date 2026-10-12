@@ -27,6 +27,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(repository.countByDayCalls, 1);
 
       expect(
         find.byKey(const Key('calendar-count-2026-10-12')),
@@ -41,6 +42,7 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('calendar-day-2026-10-12')));
       await tester.pumpAndSettle();
+      expect(repository.countByDayCalls, 1);
       expect(find.text('one entry'), findsOneWidget);
       expect(find.text('another one entry'), findsOneWidget);
       expect(find.text('two entry'), findsNothing);
@@ -63,19 +65,22 @@ void main() {
     tester,
   ) async {
     final controller = await _controller();
+    final repository = _Entries(const <JournalEntry>[]);
     await tester.pumpWidget(
       MaterialApp(
         home: CalendarPage(
           profileController: controller,
-          entryRepository: _Entries(const <JournalEntry>[]),
+          entryRepository: repository,
           initialMonth: DateTime(2026, 1),
         ),
       ),
     );
     await tester.pumpAndSettle();
+    expect(repository.countByDayCalls, 1);
     expect(find.text('2026年1月'), findsOneWidget);
     await tester.tap(find.byKey(const Key('calendar-previous-month')));
     await tester.pumpAndSettle();
+    expect(repository.countByDayCalls, 2);
     expect(find.text('2025年12月'), findsOneWidget);
     expect(find.byKey(const Key('calendar-count-2025-12-01')), findsNothing);
   });
@@ -113,28 +118,33 @@ class _Profiles implements ProfileRepository {
 class _Entries implements EntryRepository {
   _Entries(this.entries);
   final List<JournalEntry> entries;
+  int countByDayCalls = 0;
   @override
   Future<Map<String, int>> countByDay(
     String profileId,
     DateTime start,
     DateTime end,
-  ) async => {
-    for (final entry in entries.where(
-      (entry) =>
-          entry.profileId == profileId &&
-          entry.status == EntryStatus.published &&
-          entry.localDate.compareTo(_date(start)) >= 0 &&
-          entry.localDate.compareTo(_date(end)) <= 0,
-    ))
-      entry.localDate: entries
-          .where(
-            (candidate) =>
-                candidate.profileId == profileId &&
-                candidate.localDate == entry.localDate &&
-                candidate.status == EntryStatus.published,
-          )
-          .length,
-  };
+  ) async {
+    countByDayCalls++;
+    return {
+      for (final entry in entries.where(
+        (entry) =>
+            entry.profileId == profileId &&
+            entry.status == EntryStatus.published &&
+            entry.localDate.compareTo(_date(start)) >= 0 &&
+            entry.localDate.compareTo(_date(end)) <= 0,
+      ))
+        entry.localDate: entries
+            .where(
+              (candidate) =>
+                  candidate.profileId == profileId &&
+                  candidate.localDate == entry.localDate &&
+                  candidate.status == EntryStatus.published,
+            )
+            .length,
+    };
+  }
+
   @override
   Future<void> deleteEntry(String entryId) async {}
   @override

@@ -28,7 +28,8 @@ class _CalendarPageState extends State<CalendarPage> {
   Map<String, int> _counts = const <String, int>{};
   List<JournalEntry> _entries = const <JournalEntry>[];
   String? _profileId;
-  int _generation = 0;
+  int _monthGeneration = 0;
+  int _dayGeneration = 0;
 
   @override
   void initState() {
@@ -50,10 +51,16 @@ class _CalendarPageState extends State<CalendarPage> {
     final profileId = widget.profileController.active?.id;
     if (profileId == null || profileId == _profileId) return;
     _profileId = profileId;
-    unawaited(_load(profileId, ++_generation));
+    unawaited(
+      _loadMonthAndDay(profileId, ++_monthGeneration, ++_dayGeneration),
+    );
   }
 
-  Future<void> _load(String profileId, int generation) async {
+  Future<void> _loadMonthAndDay(
+    String profileId,
+    int monthGeneration,
+    int dayGeneration,
+  ) async {
     final start = _month;
     final end = DateTime(_month.year, _month.month + 1, 0);
     final results = await Future.wait<Object>(<Future<Object>>[
@@ -61,7 +68,8 @@ class _CalendarPageState extends State<CalendarPage> {
       widget.entryRepository.listDay(profileId, _selectedDay),
     ]);
     if (!mounted ||
-        generation != _generation ||
+        monthGeneration != _monthGeneration ||
+        dayGeneration != _dayGeneration ||
         profileId != widget.profileController.active?.id) {
       return;
     }
@@ -69,6 +77,19 @@ class _CalendarPageState extends State<CalendarPage> {
       _counts = results[0] as Map<String, int>;
       _entries = results[1] as List<JournalEntry>;
     });
+  }
+
+  Future<void> _loadSelectedDay(String profileId, int generation) async {
+    final entries = await widget.entryRepository.listDay(
+      profileId,
+      _selectedDay,
+    );
+    if (!mounted ||
+        generation != _dayGeneration ||
+        profileId != widget.profileController.active?.id) {
+      return;
+    }
+    setState(() => _entries = entries);
   }
 
   void _changeMonth(int delta) {
@@ -79,7 +100,11 @@ class _CalendarPageState extends State<CalendarPage> {
       _entries = const <JournalEntry>[];
     });
     final profileId = widget.profileController.active?.id;
-    if (profileId != null) unawaited(_load(profileId, ++_generation));
+    if (profileId != null) {
+      unawaited(
+        _loadMonthAndDay(profileId, ++_monthGeneration, ++_dayGeneration),
+      );
+    }
   }
 
   void _select(DateTime day) {
@@ -88,7 +113,9 @@ class _CalendarPageState extends State<CalendarPage> {
       _entries = const <JournalEntry>[];
     });
     final profileId = widget.profileController.active?.id;
-    if (profileId != null) unawaited(_load(profileId, ++_generation));
+    if (profileId != null) {
+      unawaited(_loadSelectedDay(profileId, ++_dayGeneration));
+    }
   }
 
   @override
@@ -201,7 +228,7 @@ class _MonthGrid extends StatelessWidget {
     final leading = DateTime(month.year, month.month, 1).weekday % 7;
     final days = DateTime(month.year, month.month + 1, 0).day;
     final cells = <Widget>[
-      for (var i = 0; i < leading; i++) const SizedBox(height: 38),
+      for (var i = 0; i < leading; i++) const SizedBox.shrink(),
     ];
     for (var day = 1; day <= days; day++) {
       final date = DateTime(month.year, month.month, day);
@@ -213,7 +240,6 @@ class _MonthGrid extends StatelessWidget {
           key: Key('calendar-day-$key'),
           onTap: () => onSelect(date),
           child: Container(
-            height: 38,
             margin: const EdgeInsets.all(2),
             decoration: selected
                 ? BoxDecoration(
@@ -241,12 +267,15 @@ class _MonthGrid extends StatelessWidget {
         ),
       );
     }
-    return GridView.count(
-      crossAxisCount: 7,
-      childAspectRatio: 2.4,
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 7,
+        mainAxisExtent: 48,
+      ),
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      children: cells,
+      itemCount: cells.length,
+      itemBuilder: (context, index) => cells[index],
     );
   }
 }
