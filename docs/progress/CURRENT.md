@@ -16,6 +16,11 @@
 
 Task 9 最终验证：专项测试 5/5、完整测试 84/84 通过，`flutter analyze` 无问题；覆盖中文、特殊字符、两图一视频、POSIX 相对路径、原视频开关、绝对 URI 拒绝与单行元数据防注入。
 
+## 进行中
+
+- Task 10：安全 ZIP 基础服务已完成（`0d2c62a`），专项测试 3/3 通过，`flutter analyze` 无问题。
+- 待继续：`AnalysisExportService` 单/多人物包结构、媒体复制与失败清理；`ShareAdapter`；`ExportPage`。
+
 ## 下一步
 
 从 Task 10 开始：分析 ZIP 导出与系统分享，包括安全 ZIP、单/多人物包结构、媒体复制、取消清理和导出页面。
