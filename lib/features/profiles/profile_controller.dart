@@ -170,6 +170,9 @@ final class ProfileController extends ChangeNotifier {
 
   @override
   void dispose() {
+    if (_disposed) {
+      return;
+    }
     _disposed = true;
     super.dispose();
   }

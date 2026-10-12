@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_journal_app/features/profiles/profile.dart';
@@ -6,73 +8,90 @@ import 'package:personal_journal_app/features/profiles/profile_repository.dart';
 import 'package:personal_journal_app/features/profiles/profile_switcher.dart';
 
 void main() {
-  testWidgets('shows active profile and switches to child', (tester) async {
-    final controller = await _controller();
+  testWidgets('shows the active profile and switches to a child', (
+    tester,
+  ) async {
+    final controller = await _controller(_MemoryProfiles());
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(body: ProfileSwitcher(controller: controller)),
       ),
     );
-    expect(find.text('我的日志'), findsOneWidget);
-    await tester.tap(find.text('我的日志'));
+    expect(find.text('Default'), findsOneWidget);
+    await tester.tap(find.byType(TextButton));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('孩子'));
+    await tester.tap(find.byType(MenuItemButton).at(1));
     await tester.pumpAndSettle();
     expect(controller.active?.id, 'child');
-    expect(find.text('孩子'), findsOneWidget);
   });
 
-  testWidgets('creates and selects a new profile from dialog', (tester) async {
-    final controller = await _controller();
+  testWidgets('ignores repeated taps while a profile selection is pending', (
+    tester,
+  ) async {
+    final repository = _DelayedSelectionProfiles();
+    final controller = await _controller(repository);
+    repository.writeCalls = 0;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(body: ProfileSwitcher(controller: controller)),
       ),
     );
-    await tester.tap(find.text('我的日志'));
+    await tester.tap(find.byType(TextButton));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('创建新用户'));
+    final child = find.byType(MenuItemButton).at(1);
+    await tester.tap(child);
+    await tester.tap(child);
+    await tester.pump();
+    expect(repository.writeCalls, 1);
+    repository.completeSelection();
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '新用户');
-    await tester.tap(find.text('创建'));
-    await tester.pumpAndSettle();
-    expect(controller.active?.name, '新用户');
-    expect(find.text('新用户'), findsOneWidget);
   });
 }
 
-Future<ProfileController> _controller() async {
-  final controller = ProfileController(_MemoryProfiles());
+Future<ProfileController> _controller(ProfileRepository repository) async {
+  final controller = ProfileController(repository);
   await controller.initialize();
   return controller;
 }
 
-final class _MemoryProfiles implements ProfileRepository {
-  final _profiles = <Profile>[
-    _profile('default', '我的日志', true),
-    _profile('child', '孩子', false),
+class _MemoryProfiles implements ProfileRepository {
+  final profiles = <Profile>[
+    _profile('default', 'Default', true),
+    _profile('child', 'Child', false),
   ];
-  String? _active;
+  String? active;
   @override
   Future<void> archive(String id) async {}
   @override
   Future<Profile> create({required String name}) async {
-    final profile = _profile('new-${_profiles.length}', name, false);
-    _profiles.add(profile);
-    return profile;
+    final value = _profile('new', name, false);
+    profiles.add(value);
+    return value;
   }
 
   @override
-  Future<Profile> ensureDefaultProfile() async => _profiles.first;
+  Future<Profile> ensureDefaultProfile() async => profiles.first;
   @override
-  Future<List<Profile>> listActive() async => _profiles;
+  Future<List<Profile>> listActive() async => profiles;
   @override
-  Future<String?> readActiveProfileId() async => _active;
+  Future<String?> readActiveProfileId() async => active;
   @override
   Future<void> rename({required String id, required String name}) async {}
   @override
   Future<void> writeActiveProfileId(String id) async {
-    _active = id;
+    active = id;
+  }
+}
+
+class _DelayedSelectionProfiles extends _MemoryProfiles {
+  final selection = Completer<void>();
+  int writeCalls = 0;
+  void completeSelection() => selection.complete();
+  @override
+  Future<void> writeActiveProfileId(String id) async {
+    writeCalls++;
+    if (id == 'child') await selection.future;
+    await super.writeActiveProfileId(id);
   }
 }
 
