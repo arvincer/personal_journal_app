@@ -55,6 +55,26 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    test('never overwrites an existing committed media file', () async {
+      final first = File('${sandbox.path}${Platform.pathSeparator}first.jpg');
+      final second = File('${sandbox.path}${Platform.pathSeparator}second.jpg');
+      await first.writeAsBytes(<int>[1, 2, 3]);
+      await second.writeAsBytes(<int>[9, 8, 7]);
+      final firstStaged = await store.stageCopy(first.path);
+      final secondStaged = await store.stageCopy(second.path);
+
+      final relative = await store.commitImage(firstStaged, 'same-id', 'jpg');
+      await expectLater(
+        store.commitImage(secondStaged, 'same-id', 'jpg'),
+        throwsA(isA<FileSystemException>()),
+      );
+
+      expect(
+        await (await store.resolve(relative)).readAsBytes(),
+        <int>[1, 2, 3],
+      );
+    });
   });
 
   test('SHA-256 checksum hashes UTF-8 abc', () async {
@@ -64,6 +84,18 @@ void main() {
 
     expect(
       checksum,
+      'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+    );
+  });
+
+  test('SHA-256 checksum streams a file', () async {
+    final sandbox = await Directory.systemTemp.createTemp('journal-hash-');
+    addTearDown(() => sandbox.delete(recursive: true));
+    final file = File('${sandbox.path}${Platform.pathSeparator}abc.txt');
+    await file.writeAsString('abc');
+
+    expect(
+      await Sha256ChecksumService().forFile(file.path),
       'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
     );
   });

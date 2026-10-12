@@ -100,18 +100,26 @@ final class MediaImportService {
       );
       await repository.insert(item);
       return item;
-    } catch (_) {
+    } catch (error, stackTrace) {
       for (final relativePath in committed.reversed) {
-        await fileStore.deleteRelative(relativePath);
+        await _bestEffort(() => fileStore.deleteRelative(relativePath));
       }
-      rethrow;
+      Error.throwWithStackTrace(error, stackTrace);
     } finally {
       if (stagedThumbnail != null) {
-        await fileStore.deleteStaged(stagedThumbnail);
+        await _bestEffort(() => fileStore.deleteStaged(stagedThumbnail!));
       }
       if (stagedMedia != null) {
-        await fileStore.deleteStaged(stagedMedia);
+        await _bestEffort(() => fileStore.deleteStaged(stagedMedia!));
       }
+    }
+  }
+
+  Future<void> _bestEffort(Future<void> Function() cleanup) async {
+    try {
+      await cleanup();
+    } catch (_) {
+      // Cleanup must not hide the import result or prevent later cleanup.
     }
   }
 

@@ -15,5 +15,5 @@ final class Sha256ChecksumService implements ChecksumService {
 
   @override
   Future<String> forFile(String path) async =>
-      forBytes(await File(path).readAsBytes());
+      (await sha256.bind(File(path).openRead()).first).toString();
 }

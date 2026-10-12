@@ -89,8 +89,9 @@ final class AppFileStore {
   }
 
   Future<void> deleteRelative(String relativePath) async {
-    final support = await _supportDirectoryProvider();
+    final support = await _canonicalRoot(_supportDirectoryProvider);
     final file = await resolve(relativePath);
+    await _rejectLinksBetween(support.path, file.path, includeCandidate: true);
     if (await file.exists()) {
       await file.delete();
       await _pruneEmptyParents(file.parent, support);
@@ -98,13 +99,20 @@ final class AppFileStore {
   }
 
   Future<File> resolve(String relativePath) async {
-    final support = await _supportDirectoryProvider();
-    return File(_resolveInside(support.path, relativePath));
+    final support = await _canonicalRoot(_supportDirectoryProvider);
+    final candidate = _resolveInside(support.path, relativePath);
+    await _rejectLinksBetween(support.path, candidate, includeCandidate: false);
+    return File(candidate);
   }
 
   Future<void> deleteStaged(File staged) async {
     final staging = await _stagingDirectory();
     _ensureInside(staging.path, staged.path);
+    await _rejectLinksBetween(
+      staging.path,
+      staged.path,
+      includeCandidate: true,
+    );
     if (await staged.exists()) {
       await staged.delete();
     }
@@ -134,16 +142,79 @@ final class AppFileStore {
     final relative = '$directory/$mediaId.$normalizedExtension';
     final target = await resolve(relative);
     await target.parent.create(recursive: true);
-    return (await staged.copy(target.path)).path == target.path
-        ? relative
-        : relative;
+    final support = await _canonicalRoot(_supportDirectoryProvider);
+    await _rejectLinksBetween(
+      support.path,
+      target.parent.path,
+      includeCandidate: true,
+    );
+    RandomAccessFile? output;
+    var created = false;
+    try {
+      await target.create(exclusive: true);
+      created = true;
+      output = await target.open(mode: FileMode.writeOnly);
+      await for (final chunk in staged.openRead()) {
+        await output.writeFrom(chunk);
+      }
+      await output.flush();
+      await output.close();
+      return relative;
+    } catch (_) {
+      await output?.close();
+      if (created && await target.exists()) {
+        await target.delete();
+      }
+      rethrow;
+    }
   }
 
   Future<Directory> _stagingDirectory() async {
-    final temporary = await _temporaryDirectoryProvider();
+    final temporary = await _canonicalRoot(_temporaryDirectoryProvider);
     final staging = Directory(path.join(temporary.path, 'staging'));
+    final existingType = await FileSystemEntity.type(
+      staging.path,
+      followLinks: false,
+    );
+    if (existingType == FileSystemEntityType.link) {
+      throw FileSystemException(
+        'Staging directory cannot be a link.',
+        staging.path,
+      );
+    }
     await staging.create(recursive: true);
     return staging;
+  }
+
+  Future<Directory> _canonicalRoot(DirectoryProvider provider) async {
+    final directory = await provider();
+    await directory.create(recursive: true);
+    return Directory(await directory.resolveSymbolicLinks());
+  }
+
+  Future<void> _rejectLinksBetween(
+    String root,
+    String candidate, {
+    required bool includeCandidate,
+  }) async {
+    _ensureInside(root, candidate);
+    final relative = path.relative(candidate, from: root);
+    final components = path.split(relative);
+    final count = includeCandidate ? components.length : components.length - 1;
+    var current = root;
+    for (var index = 0; index < count; index++) {
+      current = path.join(current, components[index]);
+      final type = await FileSystemEntity.type(current, followLinks: false);
+      if (type == FileSystemEntityType.link) {
+        throw FileSystemException(
+          'Links are not allowed inside the application file store.',
+          current,
+        );
+      }
+      if (type == FileSystemEntityType.notFound) {
+        return;
+      }
+    }
   }
 
   String _resolveInside(String root, String relativePath) {
