@@ -24,6 +24,7 @@ Future<void> main() async {
     final profileRepository = SqliteProfileRepository(database);
     final entryRepository = SqliteEntryRepository(database);
     final mediaRepository = SqliteMediaRepository(database);
+    final fileStore = AppFileStore();
     final profileController = ProfileController(profileRepository);
     await profileController.initialize();
     final dependencies = AppDependencies(
@@ -32,11 +33,14 @@ Future<void> main() async {
       entryRepository: entryRepository,
       mediaRepository: mediaRepository,
       mediaImportService: MediaImportService(
-        fileStore: AppFileStore(),
+        fileStore: fileStore,
         repository: mediaRepository,
+        thumbnailGenerator: PlatformVideoThumbnailGenerator(),
       ),
       profileController: profileController,
       draftController: DraftController(entryRepository),
+      fileStore: fileStore,
+      mediaPicker: ImagePickerMediaPicker(),
     );
     runApp(JournalApp(dependencies: dependencies, ownsDependencies: true));
   } catch (_) {

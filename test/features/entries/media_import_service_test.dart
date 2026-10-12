@@ -143,12 +143,24 @@ final class _RecordingMediaRepository implements MediaRepository {
   Future<void> insert(MediaItem item) async {
     inserted = item;
   }
+  @override
+  Future<void> delete(String mediaId) async {}
+  @override
+  Future<List<MediaItem>> listForEntry(String entryId) async => const <MediaItem>[];
+  @override
+  Future<void> updateCaption({required String mediaId, required String? caption}) async {}
 }
 
 final class _ThrowingMediaRepository implements MediaRepository {
   @override
   Future<void> insert(MediaItem item) =>
       Future<void>.error(StateError('db failed'));
+  @override
+  Future<void> delete(String mediaId) async {}
+  @override
+  Future<List<MediaItem>> listForEntry(String entryId) async => const <MediaItem>[];
+  @override
+  Future<void> updateCaption({required String mediaId, required String? caption}) async {}
 }
 
 final class _FakeThumbnailGenerator implements ThumbnailGenerator {

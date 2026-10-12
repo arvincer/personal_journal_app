@@ -45,6 +45,13 @@ final class DraftController extends ChangeNotifier {
     return _enqueue(_flushCurrent);
   }
 
+  Future<JournalEntry> ensureDraft() => _enqueue(() async {
+    final profileId = _requireProfileId();
+    await _flushCurrent();
+    return (await _repository.getDraft(profileId)) ??
+        _repository.saveDraft(profileId: profileId, text: textController.text);
+  });
+
   Future<JournalEntry> publish() => _enqueue(() async {
     await _flushCurrent();
     final profileId = _requireProfileId();

@@ -6,6 +6,10 @@ import 'package:personal_journal_app/features/entries/draft_controller.dart';
 import 'package:personal_journal_app/features/entries/entry_repository.dart';
 import 'package:personal_journal_app/features/entries/media_import_service.dart';
 import 'package:personal_journal_app/features/entries/media_repository.dart';
+import 'package:personal_journal_app/features/entries/today_page.dart';
+import 'package:personal_journal_app/features/entries/entry_editor_page.dart';
+import 'package:personal_journal_app/core/files/app_file_store.dart';
+import 'package:personal_journal_app/core/platform/media_picker.dart';
 import 'package:personal_journal_app/features/profiles/profile_controller.dart';
 import 'package:personal_journal_app/features/profiles/profile_repository.dart';
 import 'package:sqflite/sqflite.dart';
@@ -19,6 +23,8 @@ class AppDependencies {
     required this.mediaImportService,
     required this.profileController,
     required this.draftController,
+    required this.fileStore,
+    required this.mediaPicker,
   });
   final Database database;
   final ProfileRepository profileRepository;
@@ -27,6 +33,8 @@ class AppDependencies {
   final MediaImportService mediaImportService;
   final ProfileController profileController;
   final DraftController draftController;
+  final AppFileStore fileStore;
+  final MediaPicker mediaPicker;
   Future<void>? _closeFuture;
   Future<void> close() => _closeFuture ??= _close();
   Future<void> _close() async {
@@ -60,7 +68,22 @@ class _JournalAppState extends State<JournalApp> {
   @override
   Widget build(BuildContext context) => MaterialApp(
     theme: ThemeData(useMaterial3: true),
-    home: AppShell(profileController: widget.dependencies.profileController),
+    home: AppShell(
+      profileController: widget.dependencies.profileController,
+      todayPage: TodayPage(
+        profileController: widget.dependencies.profileController,
+        draftController: widget.dependencies.draftController,
+        entryRepository: widget.dependencies.entryRepository,
+        mediaRepository: widget.dependencies.mediaRepository,
+        mediaPicker: widget.dependencies.mediaPicker,
+        mediaImporter: widget.dependencies.mediaImportService,
+        deletionService: DefaultEntryDeletionService(
+          entryRepository: widget.dependencies.entryRepository,
+          mediaRepository: widget.dependencies.mediaRepository,
+          fileStore: widget.dependencies.fileStore,
+        ),
+      ),
+    ),
   );
 }
 

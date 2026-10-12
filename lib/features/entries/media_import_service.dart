@@ -7,15 +7,36 @@ import 'package:personal_journal_app/core/platform/media_picker.dart';
 import 'package:personal_journal_app/features/entries/media_item.dart';
 import 'package:personal_journal_app/features/entries/media_repository.dart';
 import 'package:uuid/uuid.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 abstract interface class ThumbnailGenerator {
   Future<String> generate(String stagedVideoPath);
 }
 
+abstract interface class MediaImporter {
+  Future<MediaItem> importMedia({
+    required String entryId,
+    required PickedMedia media,
+  });
+}
+
+final class PlatformVideoThumbnailGenerator implements ThumbnailGenerator {
+  @override
+  Future<String> generate(String stagedVideoPath) async {
+    final path = await VideoThumbnail.thumbnailFile(
+      video: stagedVideoPath,
+      thumbnailPath: Directory.systemTemp.path,
+      imageFormat: ImageFormat.JPEG,
+    );
+    if (path == null) throw StateError('Could not generate video thumbnail.');
+    return path;
+  }
+}
+
 typedef MediaIdProvider = String Function();
 typedef Now = DateTime Function();
 
-final class MediaImportService {
+final class MediaImportService implements MediaImporter {
   MediaImportService({
     required this.fileStore,
     required this.repository,

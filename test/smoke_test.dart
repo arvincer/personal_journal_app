@@ -4,6 +4,7 @@ import 'package:personal_journal_app/app/app_shell.dart';
 import 'package:personal_journal_app/app/journal_app.dart';
 import 'package:personal_journal_app/core/database/app_database.dart';
 import 'package:personal_journal_app/core/files/app_file_store.dart';
+import 'package:personal_journal_app/core/platform/media_picker.dart';
 import 'package:personal_journal_app/features/entries/draft_controller.dart';
 import 'package:personal_journal_app/features/entries/entry_repository.dart';
 import 'package:personal_journal_app/features/entries/media_import_service.dart';
@@ -26,17 +27,20 @@ void main() {
       await profileController.initialize();
       final entries = SqliteEntryRepository(database);
       final mediaRepository = SqliteMediaRepository(database);
+      final fileStore = AppFileStore();
       return AppDependencies(
         database: database,
         profileRepository: profiles,
         entryRepository: entries,
         mediaRepository: mediaRepository,
         mediaImportService: MediaImportService(
-          fileStore: AppFileStore(),
+          fileStore: fileStore,
           repository: mediaRepository,
         ),
         profileController: profileController,
         draftController: DraftController(entries),
+        fileStore: fileStore,
+        mediaPicker: ImagePickerMediaPicker(),
       );
     }))!;
 
