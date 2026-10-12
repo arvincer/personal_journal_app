@@ -236,6 +236,35 @@ void main() {
       ]);
     });
 
+    test(
+      'close drains a pending mutation and rejects new operations',
+      () async {
+        final delayedRepository = _DelayedMutationRepository(repository);
+        final controller = ProfileController(delayedRepository);
+        await controller.initialize();
+        final child = await controller.createAndSelect('Child');
+        await controller.select('default-id');
+        delayedRepository.delayActiveWrite(child.id);
+
+        final selection = controller.select(child.id);
+        await delayedRepository.activeWriteStarted;
+        var closeCompleted = false;
+        final close = controller.close().then((_) => closeCompleted = true);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(closeCompleted, isFalse);
+        await expectLater(
+          controller.select('default-id'),
+          throwsA(isA<StateError>()),
+        );
+
+        delayedRepository.releaseActiveWrite();
+        await selection;
+        await close;
+        expect(closeCompleted, isTrue);
+      },
+    );
+
     test('archiving a nonactive profile preserves active selection', () async {
       final controller = ProfileController(repository);
       await controller.initialize();

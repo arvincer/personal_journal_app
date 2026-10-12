@@ -31,7 +31,7 @@ class AppDependencies {
   Future<void> close() => _closeFuture ??= _close();
   Future<void> _close() async {
     await draftController.close();
-    profileController.dispose();
+    await profileController.close();
     await database.close();
   }
 }

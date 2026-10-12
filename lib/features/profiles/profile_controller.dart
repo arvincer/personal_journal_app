@@ -14,7 +14,9 @@ final class ProfileController extends ChangeNotifier {
   Profile? _active;
   bool _loading = false;
   bool _disposed = false;
+  bool _closing = false;
   Future<void> _operationQueue = Future<void>.value();
+  Future<void>? _closeFuture;
 
   List<Profile> get profiles => UnmodifiableListView<Profile>(_profiles);
   Profile? get active => _active;
@@ -157,6 +159,13 @@ final class ProfileController extends ChangeNotifier {
   }
 
   Future<T> _enqueue<T>(Future<T> Function() operation) {
+    if (_closing) {
+      return Future<T>.error(
+        StateError(
+          'ProfileController is closing and cannot accept operations.',
+        ),
+      );
+    }
     final completer = Completer<T>();
     _operationQueue = _operationQueue.then((_) async {
       try {
@@ -168,11 +177,28 @@ final class ProfileController extends ChangeNotifier {
     return completer.future;
   }
 
+  Future<void> close() {
+    final existing = _closeFuture;
+    if (existing != null) {
+      return existing;
+    }
+    _closing = true;
+    return _closeFuture = _finishClose();
+  }
+
+  Future<void> _finishClose() async {
+    await _operationQueue;
+    if (!_disposed) {
+      dispose();
+    }
+  }
+
   @override
   void dispose() {
     if (_disposed) {
       return;
     }
+    _closing = true;
     _disposed = true;
     super.dispose();
   }
