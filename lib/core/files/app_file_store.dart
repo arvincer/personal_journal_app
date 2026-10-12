@@ -101,7 +101,7 @@ final class AppFileStore {
   Future<File> resolve(String relativePath) async {
     final support = await _canonicalRoot(_supportDirectoryProvider);
     final candidate = _resolveInside(support.path, relativePath);
-    await _rejectLinksBetween(support.path, candidate, includeCandidate: false);
+    await _rejectLinksBetween(support.path, candidate, includeCandidate: true);
     return File(candidate);
   }
 
@@ -160,12 +160,22 @@ final class AppFileStore {
       await output.flush();
       await output.close();
       return relative;
-    } catch (_) {
-      await output?.close();
-      if (created && await target.exists()) {
-        await target.delete();
+    } catch (error, stackTrace) {
+      try {
+        await output?.close();
+      } catch (_) {
+        // Preserve the write failure and continue compensating.
       }
-      rethrow;
+      if (created) {
+        try {
+          if (await target.exists()) {
+            await target.delete();
+          }
+        } catch (_) {
+          // Preserve the write failure if cleanup also fails.
+        }
+      }
+      Error.throwWithStackTrace(error, stackTrace);
     }
   }
 
