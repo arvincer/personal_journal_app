@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_journal_app/core/database/app_database.dart';
 import 'package:personal_journal_app/core/time/clock.dart';
 import 'package:personal_journal_app/features/entries/draft_controller.dart';
+import 'package:personal_journal_app/features/entries/entry.dart';
 import 'package:personal_journal_app/features/entries/entry_repository.dart';
 import 'package:personal_journal_app/features/profiles/profile.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -91,6 +94,22 @@ void main() {
         expect(notifications, beforeClose);
       },
     );
+
+    test('dispose blocks notifications from a pending initialization', () async {
+      final delayedRepository = _DelayedDraftRepository(repository);
+      final controller = DraftController(delayedRepository);
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      final initialization = controller.initialize('one');
+      await delayedRepository.getDraftStarted;
+      controller.dispose();
+      delayedRepository.releaseGetDraft();
+
+      await initialization;
+      await controller.close();
+      expect(notifications, 0);
+    });
   });
 }
 
@@ -125,4 +144,51 @@ final class _IdSequence {
   int _value = 0;
 
   String next() => 'entry-${_value++}';
+}
+
+final class _DelayedDraftRepository implements EntryRepository {
+  _DelayedDraftRepository(this._delegate);
+
+  final EntryRepository _delegate;
+  final _getDraftStarted = Completer<void>();
+  final _getDraftRelease = Completer<void>();
+
+  Future<void> get getDraftStarted => _getDraftStarted.future;
+
+  void releaseGetDraft() => _getDraftRelease.complete();
+
+  @override
+  Future<void> deleteEntry(String entryId) => _delegate.deleteEntry(entryId);
+
+  @override
+  Future<JournalEntry?> getDraft(String profileId) async {
+    _getDraftStarted.complete();
+    await _getDraftRelease.future;
+    return _delegate.getDraft(profileId);
+  }
+
+  @override
+  Future<List<JournalEntry>> listDay(String profileId, DateTime localDate) =>
+      _delegate.listDay(profileId, localDate);
+
+  @override
+  Future<List<JournalEntry>> listRange({
+    required List<String> profileIds,
+    required DateTime from,
+    required DateTime to,
+  }) => _delegate.listRange(profileIds: profileIds, from: from, to: to);
+
+  @override
+  Future<JournalEntry> publishDraft(String profileId) =>
+      _delegate.publishDraft(profileId);
+
+  @override
+  Future<JournalEntry> saveDraft({
+    required String profileId,
+    required String text,
+  }) => _delegate.saveDraft(profileId: profileId, text: text);
+
+  @override
+  Future<void> updateText({required String entryId, required String text}) =>
+      _delegate.updateText(entryId: entryId, text: text);
 }

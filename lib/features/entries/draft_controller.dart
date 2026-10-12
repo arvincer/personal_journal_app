@@ -56,12 +56,16 @@ final class DraftController extends ChangeNotifier {
   });
 
   Future<void> close() {
-    return _closeFuture ??= _close();
-  }
-
-  Future<void> _close() async {
+    final existing = _closeFuture;
+    if (existing != null) {
+      return existing;
+    }
     _closing = true;
     _debounce?.cancel();
+    return _closeFuture = _finishClose();
+  }
+
+  Future<void> _finishClose() async {
     await _enqueue(_flushCurrent);
     textController.removeListener(_scheduleSave);
     textController.dispose();
