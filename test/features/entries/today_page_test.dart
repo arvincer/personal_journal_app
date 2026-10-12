@@ -147,6 +147,24 @@ final class _Entries implements EntryRepository {
   final List<JournalEntry> _published = <JournalEntry>[];
   int _next = 1;
 
+  @override
+  Future<Map<String, int>> countByDay(
+    String profileId,
+    DateTime monthStart,
+    DateTime monthEnd,
+  ) async => <String, int>{
+    for (final entry in _published.where(
+      (entry) => entry.profileId == profileId,
+    ))
+      entry.localDate: _published
+          .where(
+            (candidate) =>
+                candidate.profileId == profileId &&
+                candidate.localDate == entry.localDate,
+          )
+          .length,
+  };
+
   void seedDraft(String profileId, String text) => _drafts[profileId] = _entry(
     id: 'draft-$profileId',
     profileId: profileId,

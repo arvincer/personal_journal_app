@@ -3,9 +3,15 @@ import 'package:personal_journal_app/features/profiles/profile_controller.dart';
 import 'package:personal_journal_app/features/profiles/profile_switcher.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({required this.profileController, this.todayPage, super.key});
+  const AppShell({
+    required this.profileController,
+    this.todayPage,
+    this.calendarPage,
+    super.key,
+  });
   final ProfileController profileController;
   final Widget? todayPage;
+  final Widget? calendarPage;
   @override
   State<AppShell> createState() => _AppShellState();
 }
@@ -20,7 +26,8 @@ class _AppShellState extends State<AppShell> {
         index: _selectedIndex,
         children: <Widget>[
           widget.todayPage ?? _TodayPage(controller: widget.profileController),
-          _CalendarPage(controller: widget.profileController),
+          widget.calendarPage ??
+              _CalendarUnavailable(controller: widget.profileController),
           _ExportPage(profileId: widget.profileController.active?.id),
           const _PlaceholderPage(title: '设置'),
         ],
@@ -87,8 +94,8 @@ class _TodayPage extends StatelessWidget {
   );
 }
 
-class _CalendarPage extends StatelessWidget {
-  const _CalendarPage({required this.controller});
+class _CalendarUnavailable extends StatelessWidget {
+  const _CalendarUnavailable({required this.controller});
   final ProfileController controller;
   @override
   Widget build(BuildContext context) => SafeArea(

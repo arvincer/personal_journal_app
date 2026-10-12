@@ -16,6 +16,11 @@ abstract interface class EntryRepository {
   });
   Future<JournalEntry> publishDraft(String profileId);
   Future<List<JournalEntry>> listDay(String profileId, DateTime localDate);
+  Future<Map<String, int>> countByDay(
+    String profileId,
+    DateTime monthStart,
+    DateTime monthEnd,
+  );
   Future<List<JournalEntry>> listRange({
     required List<String> profileIds,
     required DateTime from,
@@ -164,6 +169,30 @@ final class SqliteEntryRepository implements EntryRepository {
       orderBy: 'created_at DESC, id ASC',
     );
     return rows.map(JournalEntry.fromMap).toList(growable: false);
+  }
+
+  @override
+  Future<Map<String, int>> countByDay(
+    String profileId,
+    DateTime monthStart,
+    DateTime monthEnd,
+  ) async {
+    final rows = await _database.rawQuery(
+      'SELECT local_date, COUNT(*) AS entry_count FROM entries '
+      'WHERE profile_id = ? AND status = ? '
+      'AND local_date >= ? AND local_date <= ? '
+      'GROUP BY local_date ORDER BY local_date ASC',
+      <Object?>[
+        profileId,
+        EntryStatus.published.name,
+        _localDate(monthStart),
+        _localDate(monthEnd),
+      ],
+    );
+    return <String, int>{
+      for (final row in rows)
+        row['local_date']! as String: row['entry_count']! as int,
+    };
   }
 
   @override

@@ -91,6 +91,40 @@ void main() {
     });
 
     test(
+      'countByDay groups only published entries in the inclusive range',
+      () async {
+        await repository.saveDraft(profileId: 'one', text: 'first');
+        await repository.publishDraft('one');
+        clock.now = DateTime(2026, 10, 12, 23, 31);
+        await repository.saveDraft(profileId: 'one', text: 'second');
+        await repository.publishDraft('one');
+        clock.now = DateTime(2026, 10, 13, 9);
+        await repository.saveDraft(profileId: 'one', text: 'next day');
+        await repository.publishDraft('one');
+        await repository.saveDraft(profileId: 'one', text: 'draft only');
+        await repository.saveDraft(profileId: 'two', text: 'other profile');
+        await repository.publishDraft('two');
+
+        expect(
+          await repository.countByDay(
+            'one',
+            DateTime(2026, 10, 12),
+            DateTime(2026, 10, 13),
+          ),
+          <String, int>{'2026-10-12': 2, '2026-10-13': 1},
+        );
+        expect(
+          await repository.countByDay(
+            'one',
+            DateTime(2026, 11, 1),
+            DateTime(2026, 11, 30),
+          ),
+          isEmpty,
+        );
+      },
+    );
+
+    test(
       'listRange includes boundary days across requested profiles stably',
       () async {
         await repository.saveDraft(profileId: 'one', text: 'start');

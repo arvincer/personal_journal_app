@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:personal_journal_app/app/app_shell.dart';
+import 'package:personal_journal_app/features/calendar/calendar_page.dart';
 import 'package:personal_journal_app/features/entries/draft_controller.dart';
 import 'package:personal_journal_app/features/entries/entry_repository.dart';
 import 'package:personal_journal_app/features/entries/media_import_service.dart';
@@ -70,6 +71,10 @@ class _JournalAppState extends State<JournalApp> {
     theme: ThemeData(useMaterial3: true),
     home: AppShell(
       profileController: widget.dependencies.profileController,
+      calendarPage: CalendarPage(
+        profileController: widget.dependencies.profileController,
+        entryRepository: widget.dependencies.entryRepository,
+      ),
       todayPage: TodayPage(
         profileController: widget.dependencies.profileController,
         draftController: widget.dependencies.draftController,

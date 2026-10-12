@@ -163,6 +163,13 @@ final class _DelayedDraftRepository implements EntryRepository {
   _DelayedDraftRepository(this._delegate);
 
   final EntryRepository _delegate;
+
+  @override
+  Future<Map<String, int>> countByDay(
+    String profileId,
+    DateTime monthStart,
+    DateTime monthEnd,
+  ) => _delegate.countByDay(profileId, monthStart, monthEnd);
   final _getDraftStarted = Completer<void>();
   final _getDraftRelease = Completer<void>();
 
