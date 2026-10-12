@@ -192,6 +192,50 @@ void main() {
       expect(listenerCalls, 1);
     });
 
+    test('rename and archive cannot overwrite state out of order', () async {
+      final delayedRepository = _DelayedMutationRepository(repository);
+      final controller = ProfileController(delayedRepository);
+      await controller.initialize();
+      final child = await controller.createAndSelect('Child');
+      delayedRepository.delayRename(child.id);
+
+      final rename = controller.rename(child.id, 'Renamed');
+      await delayedRepository.renameStarted;
+      final archive = controller.archive(child.id);
+      await Future<void>.delayed(Duration.zero);
+      final archiveCallsBeforeRelease = delayedRepository.archiveCalls;
+      delayedRepository.releaseRename();
+      await Future.wait(<Future<void>>[rename, archive]);
+
+      expect(archiveCallsBeforeRelease, 0);
+      expect(controller.active?.id, 'default-id');
+      expect(controller.profiles.map((profile) => profile.id), <String>[
+        'default-id',
+      ]);
+    });
+
+    test('select and archive cannot persist an archived profile', () async {
+      final delayedRepository = _DelayedMutationRepository(repository);
+      final controller = ProfileController(delayedRepository);
+      await controller.initialize();
+      final child = await controller.createAndSelect('Child');
+      await controller.select('default-id');
+      delayedRepository.delayActiveWrite(child.id);
+
+      final select = controller.select(child.id);
+      await delayedRepository.activeWriteStarted;
+      final archive = controller.archive(child.id);
+      await Future<void>.delayed(Duration.zero);
+      delayedRepository.releaseActiveWrite();
+      await Future.wait(<Future<void>>[select, archive]);
+
+      expect(controller.active?.id, 'default-id');
+      expect(await repository.readActiveProfileId(), 'default-id');
+      expect(controller.profiles.map((profile) => profile.id), <String>[
+        'default-id',
+      ]);
+    });
+
     test('archiving a nonactive profile preserves active selection', () async {
       final controller = ProfileController(repository);
       await controller.initialize();
@@ -293,4 +337,73 @@ final class _DelayedEnsureRepository implements ProfileRepository {
   @override
   Future<void> writeActiveProfileId(String id) =>
       _delegate.writeActiveProfileId(id);
+}
+
+final class _DelayedMutationRepository implements ProfileRepository {
+  _DelayedMutationRepository(this._delegate);
+
+  final ProfileRepository _delegate;
+  String? _delayedRenameId;
+  String? _delayedActiveWriteId;
+  Completer<void>? _renameStarted;
+  Completer<void>? _renameRelease;
+  Completer<void>? _activeWriteStarted;
+  Completer<void>? _activeWriteRelease;
+  int archiveCalls = 0;
+
+  Future<void> get renameStarted => _renameStarted!.future;
+  Future<void> get activeWriteStarted => _activeWriteStarted!.future;
+
+  void delayRename(String id) {
+    _delayedRenameId = id;
+    _renameStarted = Completer<void>();
+    _renameRelease = Completer<void>();
+  }
+
+  void releaseRename() => _renameRelease!.complete();
+
+  void delayActiveWrite(String id) {
+    _delayedActiveWriteId = id;
+    _activeWriteStarted = Completer<void>();
+    _activeWriteRelease = Completer<void>();
+  }
+
+  void releaseActiveWrite() => _activeWriteRelease!.complete();
+
+  @override
+  Future<void> archive(String id) {
+    archiveCalls++;
+    return _delegate.archive(id);
+  }
+
+  @override
+  Future<Profile> create({required String name}) =>
+      _delegate.create(name: name);
+
+  @override
+  Future<Profile> ensureDefaultProfile() => _delegate.ensureDefaultProfile();
+
+  @override
+  Future<List<Profile>> listActive() => _delegate.listActive();
+
+  @override
+  Future<String?> readActiveProfileId() => _delegate.readActiveProfileId();
+
+  @override
+  Future<void> rename({required String id, required String name}) async {
+    if (id == _delayedRenameId) {
+      _renameStarted!.complete();
+      await _renameRelease!.future;
+    }
+    await _delegate.rename(id: id, name: name);
+  }
+
+  @override
+  Future<void> writeActiveProfileId(String id) async {
+    if (id == _delayedActiveWriteId) {
+      _activeWriteStarted!.complete();
+      await _activeWriteRelease!.future;
+    }
+    await _delegate.writeActiveProfileId(id);
+  }
 }

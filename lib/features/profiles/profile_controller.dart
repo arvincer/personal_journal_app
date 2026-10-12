@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
@@ -13,17 +14,21 @@ final class ProfileController extends ChangeNotifier {
   Profile? _active;
   bool _loading = false;
   bool _disposed = false;
+  Future<void> _operationQueue = Future<void>.value();
 
   List<Profile> get profiles => UnmodifiableListView<Profile>(_profiles);
   Profile? get active => _active;
   bool get loading => _loading;
 
-  Future<void> initialize() async {
+  Future<void> initialize() {
     if (!_disposed) {
       _loading = true;
       notifyListeners();
     }
+    return _enqueue(_initialize);
+  }
 
+  Future<void> _initialize() async {
     try {
       await _repository.ensureDefaultProfile();
       final loadedProfiles = await _repository.listActive();
@@ -49,7 +54,10 @@ final class ProfileController extends ChangeNotifier {
     }
   }
 
-  Future<Profile> createAndSelect(String name) async {
+  Future<Profile> createAndSelect(String name) =>
+      _enqueue(() => _createAndSelect(name));
+
+  Future<Profile> _createAndSelect(String name) async {
     final created = await _repository.create(name: name);
     final loadedProfiles = await _repository.listActive();
     final selected = _findById(loadedProfiles, created.id);
@@ -65,7 +73,9 @@ final class ProfileController extends ChangeNotifier {
     return selected;
   }
 
-  Future<void> select(String id) async {
+  Future<void> select(String id) => _enqueue(() => _select(id));
+
+  Future<void> _select(String id) async {
     final selected = _findById(_profiles, id);
     if (selected == null) {
       throw StateError('Cannot select unknown or archived profile "$id".');
@@ -77,7 +87,10 @@ final class ProfileController extends ChangeNotifier {
     }
   }
 
-  Future<void> rename(String id, String name) async {
+  Future<void> rename(String id, String name) =>
+      _enqueue(() => _rename(id, name));
+
+  Future<void> _rename(String id, String name) async {
     if (_findById(_profiles, id) == null) {
       throw StateError('Cannot rename unknown or archived profile "$id".');
     }
@@ -91,7 +104,9 @@ final class ProfileController extends ChangeNotifier {
     }
   }
 
-  Future<void> archive(String id) async {
+  Future<void> archive(String id) => _enqueue(() => _archive(id));
+
+  Future<void> _archive(String id) async {
     final target = _findById(_profiles, id);
     if (target == null) {
       throw StateError('Cannot archive unknown or archived profile "$id".');
@@ -139,6 +154,18 @@ final class ProfileController extends ChangeNotifier {
       }
     }
     return null;
+  }
+
+  Future<T> _enqueue<T>(Future<T> Function() operation) {
+    final completer = Completer<T>();
+    _operationQueue = _operationQueue.then((_) async {
+      try {
+        completer.complete(await operation());
+      } catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    });
+    return completer.future;
   }
 
   @override
