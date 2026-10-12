@@ -36,8 +36,17 @@ class Profile {
       avatarPath: map['avatar_path'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String).toUtc(),
       updatedAt: DateTime.parse(map['updated_at'] as String).toUtc(),
-      isDefault: map['is_default'] == 1,
-      isArchived: map['is_archived'] == 1,
+      isDefault: _decodeSqliteBoolean(map['is_default'], 'is_default'),
+      isArchived: _decodeSqliteBoolean(map['is_archived'], 'is_archived'),
     );
   }
+}
+
+bool _decodeSqliteBoolean(Object? value, String fieldName) {
+  if (value is! int || (value != 0 && value != 1)) {
+    throw FormatException(
+      'Expected $fieldName to be the SQLite integer 0 or 1, got $value.',
+    );
+  }
+  return value == 1;
 }
