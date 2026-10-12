@@ -82,6 +82,7 @@ class _JournalAppState extends State<JournalApp> {
           mediaRepository: widget.dependencies.mediaRepository,
           fileStore: widget.dependencies.fileStore,
         ),
+        mediaFileResolver: widget.dependencies.fileStore.resolve,
       ),
     ),
   );

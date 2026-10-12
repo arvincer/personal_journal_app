@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:personal_journal_app/core/platform/media_picker.dart';
@@ -12,6 +13,8 @@ import 'package:personal_journal_app/features/entries/media_repository.dart';
 import 'package:personal_journal_app/features/profiles/profile_controller.dart';
 import 'package:personal_journal_app/features/profiles/profile_switcher.dart';
 
+typedef MediaFileResolver = Future<File> Function(String relativePath);
+
 class TodayPage extends StatefulWidget {
   const TodayPage({
     required this.profileController,
@@ -21,6 +24,7 @@ class TodayPage extends StatefulWidget {
     this.mediaPicker,
     this.mediaImporter,
     this.deletionService,
+    this.mediaFileResolver,
     super.key,
   });
 
@@ -31,6 +35,7 @@ class TodayPage extends StatefulWidget {
   final MediaPicker? mediaPicker;
   final MediaImporter? mediaImporter;
   final EntryDeletionService? deletionService;
+  final MediaFileResolver? mediaFileResolver;
 
   @override
   State<TodayPage> createState() => _TodayPageState();
@@ -75,7 +80,10 @@ class _TodayPageState extends State<TodayPage> {
       } else if (widget.draftController.profileId != profileId) {
         await widget.draftController.switchProfile(profileId);
       }
-      final entries = await widget.entryRepository.listDay(profileId, DateTime.now());
+      final entries = await widget.entryRepository.listDay(
+        profileId,
+        DateTime.now(),
+      );
       final draft = await widget.entryRepository.getDraft(profileId);
       final draftMedia = draft == null
           ? const <MediaItem>[]
@@ -102,7 +110,10 @@ class _TodayPageState extends State<TodayPage> {
       await widget.draftController.publish();
       final profileId = widget.profileController.active?.id;
       if (profileId != null) {
-        final entries = await widget.entryRepository.listDay(profileId, DateTime.now());
+        final entries = await widget.entryRepository.listDay(
+          profileId,
+          DateTime.now(),
+        );
         if (mounted && profileId == widget.profileController.active?.id) {
           setState(() {
             _entries = entries;
@@ -117,11 +128,13 @@ class _TodayPageState extends State<TodayPage> {
 
   Future<void> _pickImages() => _pick((picker) => picker.pickImages());
   Future<void> _pickVideo() => _pick((picker) async {
-        final selected = await picker.pickVideo();
-        return selected == null ? const <PickedMedia>[] : <PickedMedia>[selected];
-      });
+    final selected = await picker.pickVideo();
+    return selected == null ? const <PickedMedia>[] : <PickedMedia>[selected];
+  });
 
-  Future<void> _pick(Future<List<PickedMedia>> Function(MediaPicker) select) async {
+  Future<void> _pick(
+    Future<List<PickedMedia>> Function(MediaPicker) select,
+  ) async {
     final picker = widget.mediaPicker;
     final importer = widget.mediaImporter;
     if (picker == null || importer == null) return;
@@ -141,85 +154,226 @@ class _TodayPageState extends State<TodayPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    body: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            ProfileSwitcher(controller: widget.profileController),
+            const SizedBox(height: 12),
+            const Text('今天', style: TextStyle(fontSize: 24)),
+            Expanded(
+              child: ListView(
+                children: _entries
+                    .map(
+                      (entry) => _TimelineCard(
+                        entry: entry,
+                        entryRepository: widget.entryRepository,
+                        mediaRepository: widget.mediaRepository,
+                        deletionService: widget.deletionService,
+                        mediaFileResolver: widget.mediaFileResolver,
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+            ),
+            TextField(
+              key: const Key('today-draft-input'),
+              controller: widget.draftController.textController,
+              minLines: 2,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                hintText: '记录此刻…',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            Row(
               children: <Widget>[
-                ProfileSwitcher(controller: widget.profileController),
-                const SizedBox(height: 12),
-                const Text('今天', style: TextStyle(fontSize: 24)),
+                if (widget.mediaPicker != null) ...<Widget>[
+                  IconButton(
+                    key: const Key('today-add-images'),
+                    onPressed: _pickImages,
+                    icon: const Icon(Icons.image_outlined),
+                  ),
+                  IconButton(
+                    key: const Key('today-add-video'),
+                    onPressed: _pickVideo,
+                    icon: const Icon(Icons.videocam_outlined),
+                  ),
+                ],
                 Expanded(
-                  child: ListView(
-                    children: _entries.map((entry) => _TimelineCard(
-                      entry: entry,
-                      entryRepository: widget.entryRepository,
-                      mediaRepository: widget.mediaRepository,
-                      deletionService: widget.deletionService,
-                    )).toList(growable: false),
+                  child: _MediaStrip(
+                    media: _draftMedia,
+                    mediaFileResolver: widget.mediaFileResolver,
                   ),
                 ),
-                TextField(
-                  key: const Key('today-draft-input'),
-                  controller: widget.draftController.textController,
-                  minLines: 2,
-                  maxLines: 5,
-                  decoration: const InputDecoration(hintText: '记录此刻…', border: OutlineInputBorder()),
-                ),
-                Row(
-                  children: <Widget>[
-                    if (widget.mediaPicker != null) ...<Widget>[
-                      IconButton(key: const Key('today-add-images'), onPressed: _pickImages, icon: const Icon(Icons.image_outlined)),
-                      IconButton(key: const Key('today-add-video'), onPressed: _pickVideo, icon: const Icon(Icons.videocam_outlined)),
-                    ],
-                    Expanded(child: _MediaStrip(media: _draftMedia)),
-                    FilledButton(key: const Key('today-save'), onPressed: _canSave && !_saving ? _publish : null, child: const Text('保存')),
-                  ],
+                FilledButton(
+                  key: const Key('today-save'),
+                  onPressed: _canSave && !_saving ? _publish : null,
+                  child: const Text('保存'),
                 ),
               ],
             ),
-          ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _TimelineCard extends StatelessWidget {
-  const _TimelineCard({required this.entry, required this.entryRepository, required this.mediaRepository, required this.deletionService});
+  const _TimelineCard({
+    required this.entry,
+    required this.entryRepository,
+    required this.mediaRepository,
+    required this.deletionService,
+    required this.mediaFileResolver,
+  });
   final JournalEntry entry;
   final EntryRepository entryRepository;
   final MediaRepository mediaRepository;
   final EntryDeletionService? deletionService;
+  final MediaFileResolver? mediaFileResolver;
   @override
   Widget build(BuildContext context) => Card(
     key: Key('timeline-card-${entry.id}'),
     child: InkWell(
-      onTap: deletionService == null ? null : () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => EntryEditorPage(entry: entry, entryRepository: entryRepository, mediaRepository: mediaRepository, deletionService: deletionService!))),
+      onTap: deletionService == null
+          ? null
+          : () => Navigator.push<void>(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => EntryEditorPage(
+                  entry: entry,
+                  entryRepository: entryRepository,
+                  mediaRepository: mediaRepository,
+                  deletionService: deletionService!,
+                ),
+              ),
+            ),
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-          Text(TimeOfDay.fromDateTime(entry.createdAt.add(Duration(minutes: entry.timezoneOffsetMinutes))).format(context)),
-          if (entry.text.isNotEmpty) Text(entry.text),
-          FutureBuilder<List<MediaItem>>(
-            future: mediaRepository.listForEntry(entry.id),
-            builder: (context, snapshot) => _MediaStrip(media: snapshot.data ?? const <MediaItem>[]),
-          ),
-        ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              TimeOfDay.fromDateTime(
+                entry.createdAt.add(
+                  Duration(minutes: entry.timezoneOffsetMinutes),
+                ),
+              ).format(context),
+            ),
+            if (entry.text.isNotEmpty) Text(entry.text),
+            FutureBuilder<List<MediaItem>>(
+              future: mediaRepository.listForEntry(entry.id),
+              builder: (context, snapshot) => _MediaStrip(
+                media: snapshot.data ?? const <MediaItem>[],
+                mediaFileResolver: mediaFileResolver,
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );
 }
 
 class _MediaStrip extends StatelessWidget {
-  const _MediaStrip({required this.media});
+  const _MediaStrip({required this.media, required this.mediaFileResolver});
   final List<MediaItem> media;
+  final MediaFileResolver? mediaFileResolver;
+
   @override
   Widget build(BuildContext context) => Wrap(
-    spacing: 4,
-    children: media.map((item) => Chip(
-      key: Key('media-preview-${item.id}'),
-      avatar: Icon(item.type == MediaType.image ? Icons.image : Icons.videocam),
-      label: Text(item.type == MediaType.video && item.durationMilliseconds != null ? '${item.durationMilliseconds! ~/ 1000}s' : item.originalFilename),
-    )).toList(growable: false),
+    spacing: 6,
+    runSpacing: 6,
+    children: media
+        .map(
+          (item) => SizedBox.square(
+            key: Key('media-preview-${item.id}'),
+            dimension: 88,
+            child: _MediaPreview(
+              item: item,
+              mediaFileResolver: mediaFileResolver,
+            ),
+          ),
+        )
+        .toList(growable: false),
+  );
+}
+
+class _MediaPreview extends StatelessWidget {
+  const _MediaPreview({required this.item, required this.mediaFileResolver});
+
+  final MediaItem item;
+  final MediaFileResolver? mediaFileResolver;
+
+  @override
+  Widget build(BuildContext context) {
+    final previewPath = item.type == MediaType.video
+        ? item.thumbnailPath
+        : item.relativePath;
+    final resolver = mediaFileResolver;
+    final preview = previewPath == null || resolver == null
+        ? _fallback()
+        : FutureBuilder<File>(
+            future: resolver(previewPath),
+            builder: (context, snapshot) {
+              final file = snapshot.data;
+              if (file == null) return _fallback();
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(
+                  file,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _fallback(),
+                ),
+              );
+            },
+          );
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        preview,
+        if (item.type == MediaType.video) ...<Widget>[
+          const Center(
+            child: Icon(Icons.play_circle_fill, color: Colors.white, size: 34),
+          ),
+          if (item.durationMilliseconds != null)
+            Positioned(
+              right: 4,
+              bottom: 4,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  child: Text(
+                    '${item.durationMilliseconds! ~/ 1000}s',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _fallback() => DecoratedBox(
+    decoration: BoxDecoration(
+      color: Colors.black12,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Icon(
+      item.type == MediaType.image ? Icons.image : Icons.videocam,
+      semanticLabel: item.originalFilename,
+    ),
   );
 }
