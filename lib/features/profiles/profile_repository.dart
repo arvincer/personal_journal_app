@@ -38,21 +38,15 @@ final class SqliteProfileRepository implements ProfileRepository {
   Future<Profile> ensureDefaultProfile() {
     return _serializeDefaultCreation(() async {
       return _database.transaction((transaction) async {
-        final activeRows = await transaction.query(
+        final activeDefaultRows = await transaction.query(
           'profiles',
-          where: 'is_archived = ?',
-          whereArgs: <Object?>[0],
-          orderBy: 'is_default DESC, created_at ASC, id ASC',
+          where: 'is_archived = ? AND is_default = ?',
+          whereArgs: <Object?>[0, 1],
+          orderBy: 'created_at ASC, id ASC',
+          limit: 1,
         );
-        if (activeRows.isNotEmpty) {
-          return Profile.fromMap(activeRows.first);
-        }
-
-        final profileCount = Sqflite.firstIntValue(
-          await transaction.rawQuery('SELECT COUNT(*) FROM profiles'),
-        );
-        if (profileCount != 0) {
-          throw StateError('No active profile exists.');
+        if (activeDefaultRows.isNotEmpty) {
+          return Profile.fromMap(activeDefaultRows.first);
         }
 
         final now = _nowProvider();

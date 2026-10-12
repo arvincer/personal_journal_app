@@ -55,6 +55,44 @@ void main() {
     });
 
     test(
+      'ensureDefaultProfile creates one default beside non-default profiles',
+      () async {
+        final child = await repository.create(name: 'Child');
+
+        final defaults = await Future.wait(<Future<Profile>>[
+          repository.ensureDefaultProfile(),
+          repository.ensureDefaultProfile(),
+        ]);
+
+        expect(defaults.map((profile) => profile.id).toSet(), <String>{
+          'child-1',
+        });
+        expect(defaults.first.name, '我的日志');
+        expect(defaults.first.isDefault, isTrue);
+        expect(
+          (await repository.listActive()).map((profile) => profile.id),
+          <String>[defaults.first.id, child.id],
+        );
+      },
+    );
+
+    test('ensureDefaultProfile replaces an all-archived profile set', () async {
+      final archived = await repository.create(name: 'Archived');
+      await repository.archive(archived.id);
+
+      final createdDefault = await repository.ensureDefaultProfile();
+
+      expect(createdDefault.id, 'child-1');
+      expect(createdDefault.name, '我的日志');
+      expect(createdDefault.isDefault, isTrue);
+      expect(createdDefault.isArchived, isFalse);
+      expect(
+        (await repository.listActive()).map((profile) => profile.id),
+        <String>[createdDefault.id],
+      );
+    });
+
+    test(
       'listActive puts default first and excludes archived profiles',
       () async {
         final defaultProfile = await repository.ensureDefaultProfile();

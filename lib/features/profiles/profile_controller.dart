@@ -78,6 +78,9 @@ final class ProfileController extends ChangeNotifier {
   }
 
   Future<void> rename(String id, String name) async {
+    if (_findById(_profiles, id) == null) {
+      throw StateError('Cannot rename unknown or archived profile "$id".');
+    }
     final activeId = _active?.id;
     await _repository.rename(id: id, name: name);
     final loadedProfiles = await _repository.listActive();

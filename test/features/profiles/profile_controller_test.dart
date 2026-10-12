@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_journal_app/core/database/app_database.dart';
 import 'package:personal_journal_app/features/profiles/profile.dart';
@@ -154,6 +156,42 @@ void main() {
       expect(controller.active?.name, 'Renamed');
     });
 
+    test('rename rejects unknown IDs before calling the repository', () async {
+      final recordingRepository = _RenameRecordingRepository(repository);
+      final controller = ProfileController(recordingRepository);
+      await controller.initialize();
+
+      expect(controller.rename('missing', 'Name'), throwsStateError);
+      expect(recordingRepository.renameCalls, 0);
+    });
+
+    test('rename rejects archived IDs before calling the repository', () async {
+      await repository.ensureDefaultProfile();
+      final child = await repository.create(name: 'Child');
+      await repository.archive(child.id);
+      final recordingRepository = _RenameRecordingRepository(repository);
+      final controller = ProfileController(recordingRepository);
+      await controller.initialize();
+
+      expect(controller.rename(child.id, 'Name'), throwsStateError);
+      expect(recordingRepository.renameCalls, 0);
+    });
+
+    test('initialize completion after dispose does not notify', () async {
+      final delayedRepository = _DelayedEnsureRepository(repository);
+      final controller = ProfileController(delayedRepository);
+      var listenerCalls = 0;
+      controller.addListener(() => listenerCalls++);
+
+      final initialization = controller.initialize();
+      expect(listenerCalls, 1);
+      controller.dispose();
+      delayedRepository.releaseEnsure();
+
+      await expectLater(initialization, completes);
+      expect(listenerCalls, 1);
+    });
+
     test('archiving a nonactive profile preserves active selection', () async {
       final controller = ProfileController(repository);
       await controller.initialize();
@@ -186,4 +224,73 @@ final class _Sequence<T> {
   int _index = 0;
 
   T next() => _values[_index++];
+}
+
+final class _RenameRecordingRepository implements ProfileRepository {
+  _RenameRecordingRepository(this._delegate);
+
+  final ProfileRepository _delegate;
+  int renameCalls = 0;
+
+  @override
+  Future<void> archive(String id) => _delegate.archive(id);
+
+  @override
+  Future<Profile> create({required String name}) =>
+      _delegate.create(name: name);
+
+  @override
+  Future<Profile> ensureDefaultProfile() => _delegate.ensureDefaultProfile();
+
+  @override
+  Future<List<Profile>> listActive() => _delegate.listActive();
+
+  @override
+  Future<String?> readActiveProfileId() => _delegate.readActiveProfileId();
+
+  @override
+  Future<void> rename({required String id, required String name}) {
+    renameCalls++;
+    return _delegate.rename(id: id, name: name);
+  }
+
+  @override
+  Future<void> writeActiveProfileId(String id) =>
+      _delegate.writeActiveProfileId(id);
+}
+
+final class _DelayedEnsureRepository implements ProfileRepository {
+  _DelayedEnsureRepository(this._delegate);
+
+  final ProfileRepository _delegate;
+  final _ensureRelease = Completer<void>();
+
+  void releaseEnsure() => _ensureRelease.complete();
+
+  @override
+  Future<void> archive(String id) => _delegate.archive(id);
+
+  @override
+  Future<Profile> create({required String name}) =>
+      _delegate.create(name: name);
+
+  @override
+  Future<Profile> ensureDefaultProfile() async {
+    await _ensureRelease.future;
+    return _delegate.ensureDefaultProfile();
+  }
+
+  @override
+  Future<List<Profile>> listActive() => _delegate.listActive();
+
+  @override
+  Future<String?> readActiveProfileId() => _delegate.readActiveProfileId();
+
+  @override
+  Future<void> rename({required String id, required String name}) =>
+      _delegate.rename(id: id, name: name);
+
+  @override
+  Future<void> writeActiveProfileId(String id) =>
+      _delegate.writeActiveProfileId(id);
 }
