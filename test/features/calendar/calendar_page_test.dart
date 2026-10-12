@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_journal_app/features/calendar/calendar_page.dart';
@@ -84,6 +86,34 @@ void main() {
     expect(find.text('2025年12月'), findsOneWidget);
     expect(find.byKey(const Key('calendar-count-2025-12-01')), findsNothing);
   });
+
+  testWidgets('keeps pending month markers when another day is selected', (
+    tester,
+  ) async {
+    final controller = await _controller();
+    final pendingCounts = Completer<Map<String, int>>();
+    final repository = _Entries(
+      const <JournalEntry>[],
+      countCompleter: pendingCounts,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CalendarPage(
+          profileController: controller,
+          entryRepository: repository,
+          initialMonth: DateTime(2026, 10),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('calendar-day-2026-10-12')));
+    await tester.pump();
+    pendingCounts.complete(const <String, int>{'2026-10-12': 1});
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('calendar-count-2026-10-12')), findsOneWidget);
+  });
 }
 
 Future<ProfileController> _controller() async {
@@ -116,8 +146,9 @@ class _Profiles implements ProfileRepository {
 }
 
 class _Entries implements EntryRepository {
-  _Entries(this.entries);
+  _Entries(this.entries, {this.countCompleter});
   final List<JournalEntry> entries;
+  final Completer<Map<String, int>>? countCompleter;
   int countByDayCalls = 0;
   @override
   Future<Map<String, int>> countByDay(
@@ -126,6 +157,7 @@ class _Entries implements EntryRepository {
     DateTime end,
   ) async {
     countByDayCalls++;
+    if (countCompleter case final completer?) return completer.future;
     return {
       for (final entry in entries.where(
         (entry) =>

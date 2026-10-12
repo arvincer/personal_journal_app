@@ -63,20 +63,30 @@ class _CalendarPageState extends State<CalendarPage> {
   ) async {
     final start = _month;
     final end = DateTime(_month.year, _month.month + 1, 0);
-    final results = await Future.wait<Object>(<Future<Object>>[
-      widget.entryRepository.countByDay(profileId, start, end),
-      widget.entryRepository.listDay(profileId, _selectedDay),
-    ]);
+    final countsFuture = widget.entryRepository.countByDay(
+      profileId,
+      start,
+      end,
+    );
+    final entriesFuture = widget.entryRepository.listDay(
+      profileId,
+      _selectedDay,
+    );
+    final counts = await countsFuture;
     if (!mounted ||
         monthGeneration != _monthGeneration ||
+        profileId != widget.profileController.active?.id) {
+      return;
+    }
+    setState(() => _counts = counts);
+
+    final entries = await entriesFuture;
+    if (!mounted ||
         dayGeneration != _dayGeneration ||
         profileId != widget.profileController.active?.id) {
       return;
     }
-    setState(() {
-      _counts = results[0] as Map<String, int>;
-      _entries = results[1] as List<JournalEntry>;
-    });
+    setState(() => _entries = entries);
   }
 
   Future<void> _loadSelectedDay(String profileId, int generation) async {
