@@ -10,13 +10,13 @@
 - Task 4：日志草稿、400ms 自动保存、发布、日期/时区固化与查询（`4142c82`、`e9fba88`）
 - Task 5：图片/视频私有导入、SHA-256、缩略图、失败回滚与路径安全（`9bc3e79`、`20f2d09`、`f707c90`）
 - Task 6：应用依赖组合、四栏导航、用户切换/创建与生命周期安全（`511aa9c`、`7344def`、`28fc43b`、`1e3a7bf`）
-- Task 7（实现已提交，待最终复审）：今日日志时间线、常驻输入框、媒体预览、编辑与确认删除（`cc1a2a2`）
+- Task 7：今日日志时间线、常驻输入框、媒体预览、编辑与确认删除（`cc1a2a2`、`2cb0c6c`、`56be40b`）
 
-Task 7 当前验证：专项测试 6/6、完整测试 73/73 通过。`flutter analyze` 因权限审批服务断线尚未取得最终结果；规格与质量复审尚未执行。
+Task 7 最终验证：专项测试 13/13、完整测试 75/75 通过，`flutter analyze` 无问题；规格与质量复审通过。
 
 ## 下一步
 
-先完成 Task 7 的 `flutter analyze`、规格复审和质量复审；通过后从 Task 8 日历与历史浏览继续。
+从 Task 8 开始：日历与历史浏览，包括月份切换、记录日标记和所选日期列表。
 
 ## 开发环境
 
@@ -34,6 +34,6 @@ Task 7 当前验证：专项测试 6/6、完整测试 73/73 通过。`flutter an
 1. 阅读 `docs/superpowers/specs/2026-10-12-personal-journal-app-design.md`。
 2. 阅读 `docs/superpowers/plans/2026-10-12-personal-journal-app-implementation.md`。
 3. 查看本文件和 `git log --oneline`。
-4. 先封口 Task 7，再继续 Task 8；继续遵循 TDD、规格复审、质量复审、提交的节奏。
+4. 从 Task 8 继续，遵循 TDD、规格复审、质量复审、提交的节奏。
 
 说明：项目尚未初始化 CodeGraph；除非用户明确同意，不执行 `codegraph init -i`。
