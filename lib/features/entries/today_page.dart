@@ -152,6 +152,17 @@ class _TodayPageState extends State<TodayPage> {
       widget.draftController.textController.text.trim().isNotEmpty ||
       _draftMedia.isNotEmpty;
 
+  Future<void> _reloadTimeline() async {
+    final profileId = widget.profileController.active?.id;
+    if (profileId == null) return;
+    final entries = await widget.entryRepository.listDay(
+      profileId,
+      DateTime.now(),
+    );
+    if (!mounted || profileId != widget.profileController.active?.id) return;
+    setState(() => _entries = entries);
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
@@ -173,6 +184,7 @@ class _TodayPageState extends State<TodayPage> {
                         mediaRepository: widget.mediaRepository,
                         deletionService: widget.deletionService,
                         mediaFileResolver: widget.mediaFileResolver,
+                        onChanged: _reloadTimeline,
                       ),
                     )
                     .toList(growable: false),
@@ -222,36 +234,66 @@ class _TodayPageState extends State<TodayPage> {
   );
 }
 
-class _TimelineCard extends StatelessWidget {
+class _TimelineCard extends StatefulWidget {
   const _TimelineCard({
     required this.entry,
     required this.entryRepository,
     required this.mediaRepository,
     required this.deletionService,
     required this.mediaFileResolver,
+    required this.onChanged,
   });
   final JournalEntry entry;
   final EntryRepository entryRepository;
   final MediaRepository mediaRepository;
   final EntryDeletionService? deletionService;
   final MediaFileResolver? mediaFileResolver;
+  final Future<void> Function() onChanged;
+
+  @override
+  State<_TimelineCard> createState() => _TimelineCardState();
+}
+
+class _TimelineCardState extends State<_TimelineCard> {
+  late Future<List<MediaItem>> _media;
+
+  @override
+  void initState() {
+    super.initState();
+    _media = widget.mediaRepository.listForEntry(widget.entry.id);
+  }
+
+  @override
+  void didUpdateWidget(covariant _TimelineCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entry.id != widget.entry.id ||
+        oldWidget.mediaRepository != widget.mediaRepository) {
+      _media = widget.mediaRepository.listForEntry(widget.entry.id);
+    }
+  }
+
+  Future<void> _openEditor(BuildContext context) async {
+    final deletionService = widget.deletionService;
+    if (deletionService == null) return;
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute<bool>(
+        builder: (_) => EntryEditorPage(
+          entry: widget.entry,
+          entryRepository: widget.entryRepository,
+          mediaRepository: widget.mediaRepository,
+          deletionService: deletionService,
+        ),
+      ),
+    );
+    if (changed == true) await widget.onChanged();
+  }
+
   @override
   Widget build(BuildContext context) => Card(
-    key: Key('timeline-card-${entry.id}'),
+    key: Key('timeline-card-${widget.entry.id}'),
     child: InkWell(
-      onTap: deletionService == null
-          ? null
-          : () => Navigator.push<void>(
-              context,
-              MaterialPageRoute<void>(
-                builder: (_) => EntryEditorPage(
-                  entry: entry,
-                  entryRepository: entryRepository,
-                  mediaRepository: mediaRepository,
-                  deletionService: deletionService!,
-                ),
-              ),
-            ),
+      onTap: widget.deletionService == null ? null : () => _openEditor(context),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -259,17 +301,17 @@ class _TimelineCard extends StatelessWidget {
           children: <Widget>[
             Text(
               TimeOfDay.fromDateTime(
-                entry.createdAt.add(
-                  Duration(minutes: entry.timezoneOffsetMinutes),
+                widget.entry.createdAt.add(
+                  Duration(minutes: widget.entry.timezoneOffsetMinutes),
                 ),
               ).format(context),
             ),
-            if (entry.text.isNotEmpty) Text(entry.text),
+            if (widget.entry.text.isNotEmpty) Text(widget.entry.text),
             FutureBuilder<List<MediaItem>>(
-              future: mediaRepository.listForEntry(entry.id),
+              future: _media,
               builder: (context, snapshot) => _MediaStrip(
                 media: snapshot.data ?? const <MediaItem>[],
-                mediaFileResolver: mediaFileResolver,
+                mediaFileResolver: widget.mediaFileResolver,
               ),
             ),
           ],
@@ -303,22 +345,53 @@ class _MediaStrip extends StatelessWidget {
   );
 }
 
-class _MediaPreview extends StatelessWidget {
+class _MediaPreview extends StatefulWidget {
   const _MediaPreview({required this.item, required this.mediaFileResolver});
 
   final MediaItem item;
   final MediaFileResolver? mediaFileResolver;
 
   @override
+  State<_MediaPreview> createState() => _MediaPreviewState();
+}
+
+class _MediaPreviewState extends State<_MediaPreview> {
+  Future<File>? _file;
+
+  String? get _previewPath => widget.item.type == MediaType.video
+      ? widget.item.thumbnailPath
+      : widget.item.relativePath;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MediaPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldPath = oldWidget.item.type == MediaType.video
+        ? oldWidget.item.thumbnailPath
+        : oldWidget.item.relativePath;
+    if (oldPath != _previewPath ||
+        oldWidget.mediaFileResolver != widget.mediaFileResolver) {
+      _resolve();
+    }
+  }
+
+  void _resolve() {
+    final path = _previewPath;
+    final resolver = widget.mediaFileResolver;
+    _file = path == null || resolver == null ? null : resolver(path);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final previewPath = item.type == MediaType.video
-        ? item.thumbnailPath
-        : item.relativePath;
-    final resolver = mediaFileResolver;
-    final preview = previewPath == null || resolver == null
+    final preview = _file == null
         ? _fallback()
         : FutureBuilder<File>(
-            future: resolver(previewPath),
+            future: _file,
             builder: (context, snapshot) {
               final file = snapshot.data;
               if (file == null) return _fallback();
@@ -327,7 +400,7 @@ class _MediaPreview extends StatelessWidget {
                 child: Image.file(
                   file,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _fallback(),
+                  errorBuilder: (_, _, _) => _fallback(),
                 ),
               );
             },
@@ -336,11 +409,11 @@ class _MediaPreview extends StatelessWidget {
       fit: StackFit.expand,
       children: <Widget>[
         preview,
-        if (item.type == MediaType.video) ...<Widget>[
+        if (widget.item.type == MediaType.video) ...<Widget>[
           const Center(
             child: Icon(Icons.play_circle_fill, color: Colors.white, size: 34),
           ),
-          if (item.durationMilliseconds != null)
+          if (widget.item.durationMilliseconds != null)
             Positioned(
               right: 4,
               bottom: 4,
@@ -355,7 +428,7 @@ class _MediaPreview extends StatelessWidget {
                     vertical: 2,
                   ),
                   child: Text(
-                    '${item.durationMilliseconds! ~/ 1000}s',
+                    '${widget.item.durationMilliseconds! ~/ 1000}s',
                     style: const TextStyle(color: Colors.white, fontSize: 11),
                   ),
                 ),
@@ -372,8 +445,8 @@ class _MediaPreview extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
     ),
     child: Icon(
-      item.type == MediaType.image ? Icons.image : Icons.videocam,
-      semanticLabel: item.originalFilename,
+      widget.item.type == MediaType.image ? Icons.image : Icons.videocam,
+      semanticLabel: widget.item.originalFilename,
     ),
   );
 }

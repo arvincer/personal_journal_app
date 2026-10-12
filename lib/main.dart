@@ -6,6 +6,7 @@ import 'package:sqflite/sqflite.dart';
 import 'app/journal_app.dart';
 import 'core/database/app_database.dart';
 import 'core/files/app_file_store.dart';
+import 'core/platform/media_picker.dart';
 import 'features/entries/draft_controller.dart';
 import 'features/entries/entry_repository.dart';
 import 'features/entries/media_import_service.dart';

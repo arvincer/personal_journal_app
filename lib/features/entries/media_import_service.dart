@@ -55,6 +55,7 @@ final class MediaImportService implements MediaImporter {
   final MediaIdProvider _mediaIdProvider;
   final Now _now;
 
+  @override
   Future<MediaItem> importMedia({
     required String entryId,
     required PickedMedia media,

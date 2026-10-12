@@ -95,21 +95,34 @@ void main() {
       },
     );
 
-    test('dispose blocks notifications from a pending initialization', () async {
-      final delayedRepository = _DelayedDraftRepository(repository);
-      final controller = DraftController(delayedRepository);
-      var notifications = 0;
-      controller.addListener(() => notifications++);
+    test('close rejects operations queued after shutdown starts', () async {
+      final controller = DraftController(repository);
+      await controller.initialize('one');
 
-      final initialization = controller.initialize('one');
-      await delayedRepository.getDraftStarted;
-      controller.dispose();
-      delayedRepository.releaseGetDraft();
+      final close = controller.close();
 
-      await initialization;
-      await controller.close();
-      expect(notifications, 0);
+      await expectLater(controller.flush(), throwsA(isA<StateError>()));
+      await close;
     });
+
+    test(
+      'dispose blocks notifications from a pending initialization',
+      () async {
+        final delayedRepository = _DelayedDraftRepository(repository);
+        final controller = DraftController(delayedRepository);
+        var notifications = 0;
+        controller.addListener(() => notifications++);
+
+        final initialization = controller.initialize('one');
+        await delayedRepository.getDraftStarted;
+        controller.dispose();
+        delayedRepository.releaseGetDraft();
+
+        await initialization;
+        await controller.close();
+        expect(notifications, 0);
+      },
+    );
   });
 }
 

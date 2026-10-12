@@ -73,7 +73,8 @@ final class DraftController extends ChangeNotifier {
   }
 
   Future<void> _finishClose() async {
-    await _enqueue(_flushCurrent);
+    await _operationQueue;
+    await _flushCurrent();
     textController.removeListener(_scheduleSave);
     textController.dispose();
     _disposeNotifier();
@@ -127,6 +128,11 @@ final class DraftController extends ChangeNotifier {
   }
 
   Future<T> _enqueue<T>(Future<T> Function() operation) {
+    if (_closing) {
+      return Future<T>.error(
+        StateError('DraftController is closing and cannot accept operations.'),
+      );
+    }
     final completer = Completer<T>();
     _operationQueue = _operationQueue.then((_) async {
       try {
