@@ -13,17 +13,13 @@
 - Task 7：今日日志时间线、常驻输入框、媒体预览、编辑与确认删除（`cc1a2a2`、`2cb0c6c`、`56be40b`）
 - Task 8：日历历史浏览、按月统计、日期筛选、跨月/跨年导航与用户隔离（`625bd0f`、`d07d232`、`42f18b0`）
 - Task 9：可移植 Markdown、导出请求模型与版本化 manifest（`387f20a`）
+- Task 10：安全 ZIP、单/多人物分析包、系统分享、范围选择与取消清理（`0d2c62a`、`d04d6db`、`a190234`）
 
-Task 9 最终验证：专项测试 5/5、完整测试 84/84 通过，`flutter analyze` 无问题；覆盖中文、特殊字符、两图一视频、POSIX 相对路径、原视频开关、绝对 URI 拒绝与单行元数据防注入。
-
-## 进行中
-
-- Task 10：安全 ZIP 基础服务已完成（`0d2c62a`），专项测试 3/3 通过，`flutter analyze` 无问题。
-- 待继续：`AnalysisExportService` 单/多人物包结构、媒体复制与失败清理；`ShareAdapter`；`ExportPage`。
+Task 10 最终验证：专项测试 14/14、完整测试 93/93 通过，`flutter analyze` 无问题；覆盖安全原子 ZIP、单/多人物目录、媒体开关、失败清理、系统分享、人物默认范围跟随和取消。
 
 ## 下一步
 
-从 Task 10 开始：分析 ZIP 导出与系统分享，包括安全 ZIP、单/多人物包结构、媒体复制、取消清理和导出页面。
+从 Task 11 开始：创建可校验完整备份，包括一致 SQLite 快照、全部媒体、manifest、checksums 和原子 ZIP。
 
 ## 开发环境
 
@@ -41,6 +37,6 @@ Task 9 最终验证：专项测试 5/5、完整测试 84/84 通过，`flutter an
 1. 阅读 `docs/superpowers/specs/2026-10-12-personal-journal-app-design.md`。
 2. 阅读 `docs/superpowers/plans/2026-10-12-personal-journal-app-implementation.md`。
 3. 查看本文件和 `git log --oneline`。
-4. 从 Task 10 继续，遵循 TDD、规格复审、质量复审、提交的节奏。
+4. 从 Task 11 继续，遵循 TDD、规格复审、质量复审、提交的节奏。
 
 说明：项目尚未初始化 CodeGraph；除非用户明确同意，不执行 `codegraph init -i`。
