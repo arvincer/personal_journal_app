@@ -14,29 +14,27 @@
 - Task 8：日历历史浏览、按月统计、日期筛选、跨月/跨年导航与用户隔离（`625bd0f`、`d07d232`、`42f18b0`）
 - Task 9：可移植 Markdown、导出请求模型与版本化 manifest（`387f20a`）
 - Task 10：安全 ZIP、单/多人物分析包、系统分享、范围选择与取消清理（`0d2c62a`、`d04d6db`、`a190234`）
+- Task 11：可校验完整备份，包含一致 SQLite 快照、全部媒体、manifest、checksums 与原子 ZIP（`2471f55`）
 
-Task 10 最终验证：专项测试 14/14、完整测试 93/93 通过，`flutter analyze` 无问题；覆盖安全原子 ZIP、单/多人物目录、媒体开关、失败清理、系统分享、人物默认范围跟随和取消。
+Task 11 最终验证：备份专项测试 2/2、完整测试 95/95 通过，`flutter analyze` 无问题；覆盖快照可读、全部引用媒体与缩略图、归档内 SHA-256 复核、媒体缺失失败和临时文件清理。
 
 ## 下一步
 
-从 Task 11 开始：创建可校验完整备份，包括一致 SQLite 快照、全部媒体、manifest、checksums 和原子 ZIP。
+从 Task 12 开始：校验并合并恢复备份，包括恶意 ZIP 路径防护、大小/条目限制、校验和与 schema 校验、恢复预览、原子合并、失败回滚和设置页恢复入口。
 
 ## 开发环境
 
 - 仓库：`F:\ai\codex\peter\personal_journal_app`
 - 分支：`master`
 - Flutter：`F:\ai\codex\peter\.toolchains\flutter\bin\flutter.bat`
-- 依赖镜像：
-  - `FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn`
-  - `PUB_HOSTED_URL=https://pub.flutter-io.cn`
 - Flutter 命令在沙箱内探测 `where aapt` 可能被拒绝，需要使用已批准的 Flutter 可执行文件权限运行。
-- 本机目前没有 Android SDK；不影响 Dart/Widget 测试，Android 构建后续需安装 SDK。
+- 本机目前没有 Android SDK；不影响 Dart/Widget 测试，Android 构建后续仍需安装 SDK。
 
 ## 继续执行时
 
 1. 阅读 `docs/superpowers/specs/2026-10-12-personal-journal-app-design.md`。
 2. 阅读 `docs/superpowers/plans/2026-10-12-personal-journal-app-implementation.md`。
-3. 查看本文件和 `git log --oneline`。
-4. 从 Task 11 继续，遵循 TDD、规格复审、质量复审、提交的节奏。
+3. 查看本文档和 `git log --oneline`。
+4. 从 Task 12 继续，遵循 TDD、规格复审、质量复审、提交的节奏。
 
 说明：项目尚未初始化 CodeGraph；除非用户明确同意，不执行 `codegraph init -i`。
