@@ -1,4 +1,5 @@
 name: iOS unsigned build
+run-name: iOS unsigned build · ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
