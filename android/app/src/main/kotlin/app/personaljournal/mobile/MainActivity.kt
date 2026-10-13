@@ -1,4 +1,4 @@
-package app.personaljournal.personal_journal_app
+package app.personaljournal.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

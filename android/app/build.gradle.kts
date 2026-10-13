@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "app.personaljournal.personal_journal_app"
+    namespace = "app.personaljournal.mobile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,8 +15,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "app.personaljournal.personal_journal_app"
+        applicationId = "app.personaljournal.mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
