@@ -14,7 +14,30 @@ import 'package:personal_journal_app/features/profiles/profile.dart';
 typedef ExportDirectoryProvider = Future<Directory> Function();
 typedef ExportedAtProvider = DateTime Function();
 
-final class AnalysisExportService {
+abstract interface class AnalysisExporter {
+  Future<File> create({
+    required AnalysisExportRequest request,
+    required List<Profile> profiles,
+    required String appVersion,
+    required String destinationPath,
+    ExportCancellationToken? cancellationToken,
+  });
+}
+
+final class ExportCancellationToken {
+  bool _isCancelled = false;
+  bool get isCancelled => _isCancelled;
+  void cancel() => _isCancelled = true;
+  void throwIfCancelled() {
+    if (_isCancelled) throw const ExportCancelledException();
+  }
+}
+
+final class ExportCancelledException implements Exception {
+  const ExportCancelledException();
+}
+
+final class AnalysisExportService implements AnalysisExporter {
   AnalysisExportService({
     required this.entryRepository,
     required this.mediaRepository,
@@ -33,18 +56,22 @@ final class AnalysisExportService {
   final ExportDirectoryProvider temporaryDirectoryProvider;
   final ExportedAtProvider _exportedAtProvider;
 
+  @override
   Future<File> create({
     required AnalysisExportRequest request,
     required List<Profile> profiles,
     required String appVersion,
     required String destinationPath,
+    ExportCancellationToken? cancellationToken,
   }) async {
+    cancellationToken?.throwIfCancelled();
     final selectedProfiles = _selectedProfiles(request, profiles);
     final entries = await entryRepository.listRange(
       profileIds: selectedProfiles.map((profile) => profile.id).toList(),
       from: request.from,
       to: request.to,
     );
+    cancellationToken?.throwIfCancelled();
     final temporaryRoot = await temporaryDirectoryProvider();
     await temporaryRoot.create(recursive: true);
     final staging = Directory(
@@ -62,6 +89,7 @@ final class AnalysisExportService {
       var mediaCount = 0;
       final multiple = selectedProfiles.length > 1;
       for (final profile in selectedProfiles) {
+        cancellationToken?.throwIfCancelled();
         final profileRoot = multiple
             ? Directory(path.join(staging.path, 'profiles', profile.id))
             : staging;
@@ -73,11 +101,13 @@ final class AnalysisExportService {
             profileEntries.map((entry) => entry.localDate).toSet().toList()
               ..sort();
         for (final localDate in orderedDates) {
+          cancellationToken?.throwIfCancelled();
           final dayEntries = profileEntries
               .where((entry) => entry.localDate == localDate)
               .toList(growable: false);
           final exportedEntries = <ExportEntry>[];
           for (final entry in dayEntries) {
+            cancellationToken?.throwIfCancelled();
             final media = await mediaRepository.listForEntry(entry.id);
             mediaCount += media.length;
             exportedEntries.add(
@@ -122,10 +152,19 @@ final class AnalysisExportService {
         File(path.join(staging.path, 'manifest.json')),
         const JsonEncoder.withIndent('  ').convert(manifest.toJson()),
       );
-      return await zipService.create(
+      cancellationToken?.throwIfCancelled();
+      final archive = await zipService.create(
         stagingDirectory: staging,
         destinationPath: destinationPath,
       );
+      if (cancellationToken?.isCancelled ?? false) {
+        try {
+          if (await archive.exists()) await archive.delete();
+        } finally {
+          cancellationToken!.throwIfCancelled();
+        }
+      }
+      return archive;
     } finally {
       if (await staging.exists()) await staging.delete(recursive: true);
     }

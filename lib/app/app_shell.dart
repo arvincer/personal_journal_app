@@ -7,11 +7,13 @@ class AppShell extends StatefulWidget {
     required this.profileController,
     this.todayPage,
     this.calendarPage,
+    this.exportPage,
     super.key,
   });
   final ProfileController profileController;
   final Widget? todayPage;
   final Widget? calendarPage;
+  final Widget? exportPage;
   @override
   State<AppShell> createState() => _AppShellState();
 }
@@ -28,7 +30,10 @@ class _AppShellState extends State<AppShell> {
           widget.todayPage ?? _TodayPage(controller: widget.profileController),
           widget.calendarPage ??
               _CalendarUnavailable(controller: widget.profileController),
-          _ExportPage(profileId: widget.profileController.active?.id),
+          widget.exportPage ??
+              _ExportPlaceholder(
+                profileId: widget.profileController.active?.id,
+              ),
           const _PlaceholderPage(title: '设置'),
         ],
       ),
@@ -115,8 +120,8 @@ class _CalendarUnavailable extends StatelessWidget {
   );
 }
 
-class _ExportPage extends StatelessWidget {
-  const _ExportPage({required this.profileId});
+class _ExportPlaceholder extends StatelessWidget {
+  const _ExportPlaceholder({required this.profileId});
   final String? profileId;
   @override
   Widget build(BuildContext context) => Center(

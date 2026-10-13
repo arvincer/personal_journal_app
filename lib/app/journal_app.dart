@@ -11,6 +11,9 @@ import 'package:personal_journal_app/features/entries/today_page.dart';
 import 'package:personal_journal_app/features/entries/entry_editor_page.dart';
 import 'package:personal_journal_app/core/files/app_file_store.dart';
 import 'package:personal_journal_app/core/platform/media_picker.dart';
+import 'package:personal_journal_app/core/platform/share_adapter.dart';
+import 'package:personal_journal_app/features/export/analysis_export_service.dart';
+import 'package:personal_journal_app/features/export/export_page.dart';
 import 'package:personal_journal_app/features/profiles/profile_controller.dart';
 import 'package:personal_journal_app/features/profiles/profile_repository.dart';
 import 'package:sqflite/sqflite.dart';
@@ -26,6 +29,9 @@ class AppDependencies {
     required this.draftController,
     required this.fileStore,
     required this.mediaPicker,
+    this.analysisExporter,
+    this.shareAdapter,
+    this.exportDestinationPathProvider,
   });
   final Database database;
   final ProfileRepository profileRepository;
@@ -36,6 +42,9 @@ class AppDependencies {
   final DraftController draftController;
   final AppFileStore fileStore;
   final MediaPicker mediaPicker;
+  final AnalysisExporter? analysisExporter;
+  final ShareAdapter? shareAdapter;
+  final ExportDestinationPathProvider? exportDestinationPathProvider;
   Future<void>? _closeFuture;
   Future<void> close() => _closeFuture ??= _close();
   Future<void> _close() async {
@@ -75,6 +84,19 @@ class _JournalAppState extends State<JournalApp> {
         profileController: widget.dependencies.profileController,
         entryRepository: widget.dependencies.entryRepository,
       ),
+      exportPage:
+          widget.dependencies.analysisExporter == null ||
+              widget.dependencies.shareAdapter == null ||
+              widget.dependencies.exportDestinationPathProvider == null
+          ? null
+          : ExportPage(
+              profileController: widget.dependencies.profileController,
+              exporter: widget.dependencies.analysisExporter!,
+              shareAdapter: widget.dependencies.shareAdapter!,
+              destinationPathProvider:
+                  widget.dependencies.exportDestinationPathProvider!,
+              appVersion: '1.0.0',
+            ),
       todayPage: TodayPage(
         profileController: widget.dependencies.profileController,
         draftController: widget.dependencies.draftController,
