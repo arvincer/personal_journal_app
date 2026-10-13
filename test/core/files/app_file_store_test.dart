@@ -70,10 +70,11 @@ void main() {
         throwsA(isA<FileSystemException>()),
       );
 
-      expect(
-        await (await store.resolve(relative)).readAsBytes(),
-        <int>[1, 2, 3],
-      );
+      expect(await (await store.resolve(relative)).readAsBytes(), <int>[
+        1,
+        2,
+        3,
+      ]);
     });
   });
 
