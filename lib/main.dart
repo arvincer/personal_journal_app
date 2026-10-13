@@ -14,6 +14,7 @@ import 'core/platform/media_picker.dart';
 import 'core/platform/share_adapter.dart';
 import 'features/entries/draft_controller.dart';
 import 'features/backup/restore_service.dart';
+import 'features/backup/backup_service.dart';
 import 'features/entries/entry_repository.dart';
 import 'features/entries/media_import_service.dart';
 import 'features/entries/media_repository.dart';
@@ -21,6 +22,8 @@ import 'features/export/analysis_export_service.dart';
 import 'features/export/markdown_renderer.dart';
 import 'features/profiles/profile_controller.dart';
 import 'features/profiles/profile_repository.dart';
+import 'features/settings/settings_repository.dart';
+import 'features/settings/storage_stats_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +37,22 @@ Future<void> main() async {
     final entryRepository = SqliteEntryRepository(database);
     final mediaRepository = SqliteMediaRepository(database);
     final fileStore = AppFileStore();
+    final settingsRepository = SqliteSettingsRepository(database);
+    final storageStatsLoader = StorageStatsService(
+      supportDirectoryProvider: getApplicationSupportDirectory,
+      temporaryDirectoryProvider: getTemporaryDirectory,
+    );
+    final shareAdapter = const SystemShareAdapter();
+    final backupService = BackupService(
+      database: database,
+      snapshotFactory: databaseFactory,
+      fileStore: fileStore,
+      checksumService: Sha256ChecksumService(),
+      zipService: const ZipService(),
+      temporaryDirectoryProvider: getTemporaryDirectory,
+    );
+    final initialIncludeOriginalVideos = await settingsRepository
+        .readIncludeOriginalVideos();
     final profileController = ProfileController(profileRepository);
     await profileController.initialize();
     final dependencies = AppDependencies(
@@ -58,7 +77,7 @@ Future<void> main() async {
         markdownRenderer: MarkdownRenderer(),
         temporaryDirectoryProvider: getTemporaryDirectory,
       ),
-      shareAdapter: const SystemShareAdapter(),
+      shareAdapter: shareAdapter,
       exportDestinationPathProvider: () async {
         final temporary = await getTemporaryDirectory();
         final exports = Directory(path.join(temporary.path, 'exports'));
@@ -75,6 +94,22 @@ Future<void> main() async {
         checksumService: Sha256ChecksumService(),
         temporaryDirectoryProvider: getTemporaryDirectory,
       ),
+      settingsRepository: settingsRepository,
+      storageStatsLoader: storageStatsLoader,
+      initialIncludeOriginalVideos: initialIncludeOriginalVideos,
+      createBackup: () async {
+        final temporary = await getTemporaryDirectory();
+        final backups = Directory(path.join(temporary.path, 'backups'));
+        await backups.create(recursive: true);
+        final backup = await backupService.createFullBackup(
+          destinationPath: path.join(
+            backups.path,
+            'PersonalJournal-Backup-${DateTime.now().millisecondsSinceEpoch}.zip',
+          ),
+          appVersion: '1.0.0',
+        );
+        await shareAdapter.shareFile(backup.path);
+      },
     );
     runApp(JournalApp(dependencies: dependencies, ownsDependencies: true));
   } catch (_) {

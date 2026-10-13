@@ -14,6 +14,7 @@ class ExportPage extends StatefulWidget {
     required this.shareAdapter,
     required this.destinationPathProvider,
     required this.appVersion,
+    this.initialIncludeOriginalVideos = false,
     this.todayProvider,
     super.key,
   });
@@ -24,6 +25,7 @@ class ExportPage extends StatefulWidget {
   final ExportDestinationPathProvider destinationPathProvider;
   final ExportTodayProvider? todayProvider;
   final String appVersion;
+  final bool initialIncludeOriginalVideos;
 
   @override
   State<ExportPage> createState() => _ExportPageState();
@@ -33,7 +35,7 @@ class _ExportPageState extends State<ExportPage> {
   final Set<String> _selectedProfiles = <String>{};
   ExportRangePreset _preset = ExportRangePreset.lastSevenDays;
   DateTimeRange? _customRange;
-  bool _includeOriginalVideos = false;
+  late bool _includeOriginalVideos;
   bool _busy = false;
   ExportCancellationToken? _cancellationToken;
   String? _lastActiveProfileId;
@@ -41,6 +43,7 @@ class _ExportPageState extends State<ExportPage> {
   @override
   void initState() {
     super.initState();
+    _includeOriginalVideos = widget.initialIncludeOriginalVideos;
     final activeId = widget.profileController.active?.id;
     _lastActiveProfileId = activeId;
     if (activeId != null) _selectedProfiles.add(activeId);

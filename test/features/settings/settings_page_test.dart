@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_journal_app/features/backup/restore_preview.dart';
 import 'package:personal_journal_app/features/backup/restore_service.dart';
 import 'package:personal_journal_app/features/settings/settings_page.dart';
+import 'package:personal_journal_app/features/settings/settings_repository.dart';
+import 'package:personal_journal_app/features/settings/storage_stats_service.dart';
 
 void main() {
   testWidgets('previews and confirms a selected backup before restoring', (
@@ -35,6 +37,49 @@ void main() {
     expect(refreshes, 1);
     expect(find.textContaining('恢复完成'), findsOneWidget);
   });
+
+  testWidgets('shows storage, persists defaults, and warns at two days', (
+    tester,
+  ) async {
+    final settings = _FakeSettingsRepository(
+      refreshDate: DateTime(2026, 10, 10),
+    );
+    var backups = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SettingsPage(
+            restorer: _FakeRestorer(),
+            backupFilePicker: () async => null,
+            onRestored: () async {},
+            settingsRepository: settings,
+            storageStatsLoader: _FakeStorageStatsLoader(),
+            createBackup: () async => backups++,
+            todayProvider: () => DateTime(2026, 10, 15),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('数据库 10 B'), findsOneWidget);
+    expect(find.textContaining('预计剩余 2 天'), findsOneWidget);
+    expect(find.text('建议立即备份，并尽快刷新侧载。'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('default-original-videos')));
+    await tester.pump();
+    expect(settings.includeOriginalVideos, isTrue);
+
+    await tester.tap(find.byKey(const Key('create-full-backup')));
+    await tester.pumpAndSettle();
+    expect(backups, 1);
+
+    await tester.tap(find.byKey(const Key('confirm-sideload-refresh')));
+    await tester.pump();
+    expect(settings.refreshDate, DateTime(2026, 10, 15));
+    expect(find.textContaining('预计剩余 7 天'), findsOneWidget);
+  });
 }
 
 final class _FakeRestorer implements BackupRestorer {
@@ -65,4 +110,38 @@ final class _FakeRestorer implements BackupRestorer {
       insertedMedia: 3,
     );
   }
+}
+
+final class _FakeSettingsRepository implements SettingsRepository {
+  _FakeSettingsRepository({this.refreshDate});
+
+  bool includeOriginalVideos = false;
+  DateTime? refreshDate;
+
+  @override
+  Future<bool> readIncludeOriginalVideos() async => includeOriginalVideos;
+
+  @override
+  Future<DateTime?> readLastSideloadRefreshDate() async => refreshDate;
+
+  @override
+  Future<void> writeIncludeOriginalVideos(bool value) async {
+    includeOriginalVideos = value;
+  }
+
+  @override
+  Future<void> writeLastSideloadRefreshDate(DateTime value) async {
+    refreshDate = value;
+  }
+}
+
+final class _FakeStorageStatsLoader implements StorageStatsLoader {
+  @override
+  Future<StorageStats> scan() async => const StorageStats(
+    databaseBytes: 10,
+    imageBytes: 20,
+    videoBytes: 30,
+    thumbnailBytes: 5,
+    temporaryBytes: 7,
+  );
 }

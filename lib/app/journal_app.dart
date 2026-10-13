@@ -18,6 +18,8 @@ import 'package:personal_journal_app/features/backup/restore_service.dart';
 import 'package:personal_journal_app/features/profiles/profile_controller.dart';
 import 'package:personal_journal_app/features/profiles/profile_repository.dart';
 import 'package:personal_journal_app/features/settings/settings_page.dart';
+import 'package:personal_journal_app/features/settings/settings_repository.dart';
+import 'package:personal_journal_app/features/settings/storage_stats_service.dart';
 import 'package:sqflite/sqflite.dart';
 
 class AppDependencies {
@@ -35,6 +37,10 @@ class AppDependencies {
     this.shareAdapter,
     this.exportDestinationPathProvider,
     this.restoreService,
+    this.settingsRepository,
+    this.storageStatsLoader,
+    this.createBackup,
+    this.initialIncludeOriginalVideos = false,
   });
   final Database database;
   final ProfileRepository profileRepository;
@@ -49,6 +55,10 @@ class AppDependencies {
   final ShareAdapter? shareAdapter;
   final ExportDestinationPathProvider? exportDestinationPathProvider;
   final BackupRestorer? restoreService;
+  final SettingsRepository? settingsRepository;
+  final StorageStatsLoader? storageStatsLoader;
+  final CreateBackupAction? createBackup;
+  final bool initialIncludeOriginalVideos;
   Future<void>? _closeFuture;
   Future<void> close() => _closeFuture ??= _close();
   Future<void> _close() async {
@@ -100,12 +110,18 @@ class _JournalAppState extends State<JournalApp> {
               destinationPathProvider:
                   widget.dependencies.exportDestinationPathProvider!,
               appVersion: '1.0.0',
+              initialIncludeOriginalVideos:
+                  widget.dependencies.initialIncludeOriginalVideos,
             ),
       settingsPage: widget.dependencies.restoreService == null
           ? null
           : SettingsPage(
               restorer: widget.dependencies.restoreService!,
               onRestored: widget.dependencies.profileController.initialize,
+              profileController: widget.dependencies.profileController,
+              settingsRepository: widget.dependencies.settingsRepository,
+              storageStatsLoader: widget.dependencies.storageStatsLoader,
+              createBackup: widget.dependencies.createBackup,
             ),
       todayPage: TodayPage(
         profileController: widget.dependencies.profileController,
