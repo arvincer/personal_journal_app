@@ -17,12 +17,13 @@
 - Task 11：可校验完整备份，包含一致 SQLite 快照、全部媒体、manifest、checksums 与原子 ZIP（`2471f55`）
 - Task 12：安全恢复预览、流式解包、校验和/schema/路径防护、重复 UUID 跳过、原子合并、失败回滚与设置页入口（`72ece75`）
 - Task 13：设置持久化、分项存储统计、用户重命名/归档、完整备份、原视频默认值与免费侧载到期提醒（`c8258d4`）
+- Task 14：固定跨平台应用标识、iOS 相册权限、无签名 iOS CI 产物与 Windows 免费侧载指南（`44407a8`）
 
-Task 13 最终验证：设置专项测试 5/5、完整测试 106/106 通过，`flutter analyze` 无问题；覆盖设置持久化、7 天侧载估算、两天内提醒、分项存储扫描、完整备份动作和恢复确认 UI。
+Task 14 最终验证：旧应用标识与禁止 iOS 权限扫描均为 0，plist XML 和 workflow YAML 有效，完整测试 106/106 通过，`flutter analyze` 无问题。iOS 构建需由 macOS CI 实际验证。
 
 ## 下一步
 
-从 Task 14 开始：固定 iOS/Android 应用标识、补 iOS 相册权限、配置无签名 iOS CI 产物，并编写 Windows 免费侧载指南。
+从 Task 15 开始：补端到端验收覆盖、发布检查清单与 README 用户/开发文档，并执行完整发布验证。
 
 ## 开发环境
 
@@ -37,6 +38,6 @@ Task 13 最终验证：设置专项测试 5/5、完整测试 106/106 通过，`f
 1. 阅读 `docs/superpowers/specs/2026-10-12-personal-journal-app-design.md`。
 2. 阅读 `docs/superpowers/plans/2026-10-12-personal-journal-app-implementation.md`。
 3. 查看本文档和 `git log --oneline`。
-4. 从 Task 14 继续，遵循 TDD、规格复审、质量复审、提交的节奏。
+4. 从 Task 15 继续，遵循 TDD、规格复审、质量复审、提交的节奏。
 
 说明：项目尚未初始化 CodeGraph；除非用户明确同意，不执行 `codegraph init -i`。
