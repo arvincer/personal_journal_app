@@ -21,8 +21,11 @@ final class ZipService {
       await stagingDirectory.resolveSymbolicLinks(),
     );
     final destination = File(path.normalize(path.absolute(destinationPath)));
-    if (path.equals(stagingRoot, destination.path) ||
-        path.isWithin(stagingRoot, destination.path)) {
+    final canonicalDestination = await _canonicalizePotentialPath(
+      destination.path,
+    );
+    if (path.equals(stagingRoot, canonicalDestination) ||
+        path.isWithin(stagingRoot, canonicalDestination)) {
       throw ArgumentError.value(
         destinationPath,
         'destinationPath',
@@ -62,6 +65,23 @@ final class ZipService {
       }
       Error.throwWithStackTrace(error, stackTrace);
     }
+  }
+
+  Future<String> _canonicalizePotentialPath(String candidate) async {
+    var ancestor = Directory(path.dirname(candidate));
+    final missingSegments = <String>[path.basename(candidate)];
+    while (!await ancestor.exists()) {
+      final parent = ancestor.parent;
+      if (path.equals(parent.path, ancestor.path)) break;
+      missingSegments.add(path.basename(ancestor.path));
+      ancestor = parent;
+    }
+    final canonicalAncestor = path.normalize(
+      await ancestor.resolveSymbolicLinks(),
+    );
+    return path.normalize(
+      path.joinAll(<String>[canonicalAncestor, ...missingSegments.reversed]),
+    );
   }
 
   Future<void> _validateTree(Directory root) async {
