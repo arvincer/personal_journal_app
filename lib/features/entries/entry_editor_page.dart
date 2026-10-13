@@ -60,7 +60,9 @@ class EntryEditorPage extends StatefulWidget {
 }
 
 class _EntryEditorPageState extends State<EntryEditorPage> {
-  late final TextEditingController _text = TextEditingController(text: widget.entry.text);
+  late final TextEditingController _text = TextEditingController(
+    text: widget.entry.text,
+  );
   List<MediaItem> _media = const <MediaItem>[];
   bool _saving = false;
 
@@ -102,8 +104,14 @@ class _EntryEditorPageState extends State<EntryEditorPage> {
         title: const Text('删除记录？'),
         content: const Text('记录和所有附件将被删除。'),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('删除')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('删除'),
+          ),
         ],
       ),
     );
@@ -114,13 +122,20 @@ class _EntryEditorPageState extends State<EntryEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final local = widget.entry.createdAt.add(Duration(minutes: widget.entry.timezoneOffsetMinutes));
-    final time = '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    final local = widget.entry.createdAt.add(
+      Duration(minutes: widget.entry.timezoneOffsetMinutes),
+    );
+    final time =
+        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
     return Scaffold(
       appBar: AppBar(
         title: Text(time),
         actions: <Widget>[
-          IconButton(key: const Key('entry-editor-delete'), onPressed: _delete, icon: const Icon(Icons.delete_outline)),
+          IconButton(
+            key: const Key('entry-editor-delete'),
+            onPressed: _delete,
+            icon: const Icon(Icons.delete_outline),
+          ),
         ],
       ),
       body: Padding(
@@ -128,15 +143,30 @@ class _EntryEditorPageState extends State<EntryEditorPage> {
         child: Column(
           children: <Widget>[
             Expanded(
-              child: TextField(key: const Key('entry-editor-text'), controller: _text, maxLines: null, expands: true, decoration: const InputDecoration(border: OutlineInputBorder())),
+              child: TextField(
+                key: const Key('entry-editor-text'),
+                controller: _text,
+                maxLines: null,
+                expands: true,
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+              ),
             ),
-            for (final item in _media) TextFormField(
-              initialValue: item.caption,
-              decoration: InputDecoration(labelText: item.originalFilename),
-              onFieldSubmitted: (caption) => widget.mediaRepository.updateCaption(mediaId: item.id, caption: caption.isEmpty ? null : caption),
-            ),
+            for (final item in _media)
+              TextFormField(
+                initialValue: item.caption,
+                decoration: InputDecoration(labelText: item.originalFilename),
+                onFieldSubmitted: (caption) =>
+                    widget.mediaRepository.updateCaption(
+                      mediaId: item.id,
+                      caption: caption.isEmpty ? null : caption,
+                    ),
+              ),
             const SizedBox(height: 8),
-            FilledButton(key: const Key('entry-editor-save'), onPressed: _saving ? null : _save, child: const Text('保存')),
+            FilledButton(
+              key: const Key('entry-editor-save'),
+              onPressed: _saving ? null : _save,
+              child: const Text('保存'),
+            ),
           ],
         ),
       ),
