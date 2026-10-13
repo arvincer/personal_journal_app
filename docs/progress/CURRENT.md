@@ -15,12 +15,13 @@
 - Task 9：可移植 Markdown、导出请求模型与版本化 manifest（`387f20a`）
 - Task 10：安全 ZIP、单/多人物分析包、系统分享、范围选择与取消清理（`0d2c62a`、`d04d6db`、`a190234`）
 - Task 11：可校验完整备份，包含一致 SQLite 快照、全部媒体、manifest、checksums 与原子 ZIP（`2471f55`）
+- Task 12：安全恢复预览、流式解包、校验和/schema/路径防护、重复 UUID 跳过、原子合并、失败回滚与设置页入口（`72ece75`）
 
-Task 11 最终验证：备份专项测试 2/2、完整测试 95/95 通过，`flutter analyze` 无问题；覆盖快照可读、全部引用媒体与缩略图、归档内 SHA-256 复核、媒体缺失失败和临时文件清理。
+Task 12 最终验证：恢复专项测试 7/7、完整测试 102/102 通过，`flutter analyze` 无问题；覆盖合法恢复、重复恢复、缺失媒体、坏校验和、未来 schema、ZIP 路径穿越、复制中途失败的数据库与文件回滚，以及确认恢复 UI。
 
 ## 下一步
 
-从 Task 12 开始：校验并合并恢复备份，包括恶意 ZIP 路径防护、大小/条目限制、校验和与 schema 校验、恢复预览、原子合并、失败回滚和设置页恢复入口。
+从 Task 13 开始：完善设置页、存储统计、完整备份入口和免费侧载的到期提醒。
 
 ## 开发环境
 
@@ -35,6 +36,6 @@ Task 11 最终验证：备份专项测试 2/2、完整测试 95/95 通过，`flu
 1. 阅读 `docs/superpowers/specs/2026-10-12-personal-journal-app-design.md`。
 2. 阅读 `docs/superpowers/plans/2026-10-12-personal-journal-app-implementation.md`。
 3. 查看本文档和 `git log --oneline`。
-4. 从 Task 12 继续，遵循 TDD、规格复审、质量复审、提交的节奏。
+4. 从 Task 13 继续，遵循 TDD、规格复审、质量复审、提交的节奏。
 
 说明：项目尚未初始化 CodeGraph；除非用户明确同意，不执行 `codegraph init -i`。
