@@ -38,8 +38,21 @@ jobs:
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
-      - name: Run iOS integration tests
-        run: flutter test integration_test -d "${{ steps.simulator.outputs.udid }}"
+      - name: Run backup and restore integration test
+        timeout-minutes: 15
+        run: >-
+          flutter test integration_test/backup_restore_flow_test.dart
+          -d "${{ steps.simulator.outputs.udid }}"
+      - name: Reset the simulator app between integration tests
+        if: always()
+        run: |
+          xcrun simctl terminate "${{ steps.simulator.outputs.udid }}" app.personaljournal.mobile || true
+          xcrun simctl uninstall "${{ steps.simulator.outputs.udid }}" app.personaljournal.mobile || true
+      - name: Run journal integration test
+        timeout-minutes: 15
+        run: >-
+          flutter test integration_test/journal_flow_test.dart
+          -d "${{ steps.simulator.outputs.udid }}"
       - name: Build unsigned device app
         run: flutter build ios --release --no-codesign
       - name: Package unsigned IPA
