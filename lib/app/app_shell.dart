@@ -8,12 +8,14 @@ class AppShell extends StatefulWidget {
     this.todayPage,
     this.calendarPage,
     this.exportPage,
+    this.settingsPage,
     super.key,
   });
   final ProfileController profileController;
   final Widget? todayPage;
   final Widget? calendarPage;
   final Widget? exportPage;
+  final Widget? settingsPage;
   @override
   State<AppShell> createState() => _AppShellState();
 }
@@ -34,7 +36,7 @@ class _AppShellState extends State<AppShell> {
               _ExportPlaceholder(
                 profileId: widget.profileController.active?.id,
               ),
-          const _PlaceholderPage(title: '设置'),
+          widget.settingsPage ?? const _PlaceholderPage(title: '设置'),
         ],
       ),
       bottomNavigationBar: NavigationBar(

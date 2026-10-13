@@ -105,6 +105,54 @@ final class AppFileStore {
     return File(candidate);
   }
 
+  Future<void> restoreFile(File source, String relativePath) async {
+    const allowedPrefixes = <String>[
+      'media/images/',
+      'media/videos/',
+      'media/thumbnails/',
+    ];
+    final portablePath = relativePath.replaceAll('\\', '/');
+    if (!allowedPrefixes.any(portablePath.startsWith)) {
+      throw ArgumentError.value(
+        relativePath,
+        'relativePath',
+        'Restore path is outside a media directory.',
+      );
+    }
+    if (!await source.exists()) {
+      throw ArgumentError.value(source.path, 'source', 'File does not exist.');
+    }
+    var target = await resolve(portablePath);
+    await target.parent.create(recursive: true);
+    target = await resolve(portablePath);
+    RandomAccessFile? output;
+    var created = false;
+    try {
+      await target.create(exclusive: true);
+      created = true;
+      output = await target.open(mode: FileMode.writeOnly);
+      await for (final chunk in source.openRead()) {
+        await output.writeFrom(chunk);
+      }
+      await output.flush();
+      await output.close();
+    } catch (error, stackTrace) {
+      try {
+        await output?.close();
+      } catch (_) {
+        // Preserve the copy failure.
+      }
+      if (created) {
+        try {
+          if (await target.exists()) await target.delete();
+        } catch (_) {
+          // Preserve the copy failure.
+        }
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+
   Future<void> deleteStaged(File staged) async {
     final staging = await _stagingDirectory();
     _ensureInside(staging.path, staged.path);

@@ -8,10 +8,12 @@ import 'package:sqflite/sqflite.dart';
 import 'app/journal_app.dart';
 import 'core/database/app_database.dart';
 import 'core/files/app_file_store.dart';
+import 'core/files/checksum_service.dart';
 import 'core/files/zip_service.dart';
 import 'core/platform/media_picker.dart';
 import 'core/platform/share_adapter.dart';
 import 'features/entries/draft_controller.dart';
+import 'features/backup/restore_service.dart';
 import 'features/entries/entry_repository.dart';
 import 'features/entries/media_import_service.dart';
 import 'features/entries/media_repository.dart';
@@ -66,6 +68,13 @@ Future<void> main() async {
           'PersonalJournal-${DateTime.now().millisecondsSinceEpoch}.zip',
         );
       },
+      restoreService: RestoreService(
+        database: database,
+        snapshotFactory: databaseFactory,
+        fileStore: fileStore,
+        checksumService: Sha256ChecksumService(),
+        temporaryDirectoryProvider: getTemporaryDirectory,
+      ),
     );
     runApp(JournalApp(dependencies: dependencies, ownsDependencies: true));
   } catch (_) {
