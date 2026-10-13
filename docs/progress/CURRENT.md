@@ -50,4 +50,4 @@
 - macOS CI 已通过静态分析、106 项单元/组件测试和两条 iPhone 模拟器集成测试。
 - 已成功构建并上传无签名 IPA Artifact：`personal-journal-unsigned-ios`，Artifact ID `11793759458`，GitHub 保留至 2026-10-27。
 - iOS 集成测试曾因前一测试的 App 残留导致后一测试挂起；提交 `fe7fce8` 将测试拆分并在中间终止、卸载模拟器 App 后解决。
-- 后续只需从成功的 Actions 页面下载 Artifact，解压得到 `.ipa`，再按 `docs/ios-sideload.md` 使用 Sideloadly 和免费 Apple ID 安装；免费签名通常 7 天后需要重新安装。
+- 后续只需从成功的 Actions 页面下载 Artifact，解压得到 `.ipa`，再按 `docs/side-loading-windows.md` 使用 Sideloadly 和免费 Apple ID 安装；免费签名通常 7 天后需要重新安装。
